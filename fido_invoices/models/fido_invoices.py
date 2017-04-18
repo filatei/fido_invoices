@@ -1,10 +1,8 @@
 from openerp import api, fields, models
-import datetime
-import time
+from openerp.exceptions import UserError, ValidationError
 from datetime import date,timedelta
 from dateutil.relativedelta import relativedelta
-from openerp.exceptions import UserError, ValidationError
-import logging
+import datetime,time,logging
 
 _logger = logging.getLogger(__name__)
 
