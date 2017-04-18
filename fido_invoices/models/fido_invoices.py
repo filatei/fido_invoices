@@ -4,6 +4,7 @@ from datetime import date,timedelta
 from dateutil.relativedelta import relativedelta
 import datetime,time,logging
 
+
 _logger = logging.getLogger(__name__)
 
 class fido_teller(models.Model):
