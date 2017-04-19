@@ -7,18 +7,6 @@ import datetime,time,logging
 
 _logger = logging.getLogger(__name__)
 
-class fido_teller(models.Model):
-    _name = 'fido.teller'
-    _description = 'Model Bank Tellers coming to Fido'
-    # invoice_id = fields.One2many('fido.invoice', 'teller_id',string='Fido Invoice Reference')
-    name = fields.Char(string='Teller Number',
-                           required=True)
-
-    teller_name = fields.Many2one('res.partner', string='Name on Teller', required=True,
-                store=True, domain="[('customer', '=', True)]")
-    date = fields.Date(string='Teller Date', required=True, help="Teller Date.")
-    teller_amount = fields.Float(string='Teller Amount', required=True, help='Teller Amount')
-    bank = fields.Many2one('fido.bank', string='Bank Name',required=True)
 
 
 class fido_invoice(models.Model):
@@ -43,8 +31,20 @@ class fido_invoice(models.Model):
     partner_id = fields.Many2one('res.partner', string='Partner', change_default=True,
              required=True, readonly=True,store=True, states={'draft': [('readonly', False)]},
              track_visibility='always')
-    salesp = fields.Many2one(related='partner_id.user_id',string='FIDO SALESPERSON', track_visibility='onchange',
+    salesp = fields.Many2one(related='partner_id.user_id',string='Salesperson', track_visibility='onchange',
              readonly=True,store=True, states={'draft': [('readonly', False)]})
+
+    # fields for derived bags
+    nbags70 = fields.Float(compute='_compute_bags',  string='70 per Bag',readonly=True,
+                              store=True,track_visibility='onchange')
+    nbags75 = fields.Float(compute='_compute_bags', string='75 per Bag',readonly=True,
+                              store=True,track_visibility='onchange')
+    nbags85 = fields.Float(compute='_compute_bags',  string='85 per Bag',readonly=True,
+                              store=True,track_visibility='onchange')
+    nbags80 = fields.Float(compute='_compute_bags', string='80 per Bag',readonly=True,
+                              store=True,track_visibility='onchange')
+    nbags100 = fields.Float(compute='_compute_bags', string='100 per Bag',readonly=True,
+                              store=True,track_visibility='onchange')
 
     def _teller_amount(self):
         _logger.info("*** LOGGING Processing  teller_name %s",  self.teller_name)
@@ -53,3 +53,12 @@ class fido_invoice(models.Model):
     _sql_constraints = [
         ('name_uniq', 'unique (teller_id,teller_name,teller_bank)', "Teller name/bank/id already exists !"),
     ]
+
+    @api.one
+    @api.depends('teller_amount')
+    def _compute_bags(self):
+        self.nbags70 = self.teller_amount / 70.0
+        self.nbags75 = self.teller_amount / 75.0
+        self.nbags80 = self.teller_amount / 80.0
+        self.nbags85 = self.teller_amount / 85.0
+        self.nbags100 = self.teller_amount / 100.0

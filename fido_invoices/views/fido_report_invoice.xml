@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <!-- Print Report for Fido Invoices List View -->
+
+        <!-- Main template -->
+        <template id="invoicereport">
+            <t t-call="report.html_container">
+            <t t-call="report.external_layout">
+            <t t-set="invoice_total" t-value="0.0"/>
+            <t t-set="sn" t-value="1"/>
+            <div class="oe_structure"/>
+            <div class="page">
+
+                <h2> Fido INVOICE Report for <span t-field="docs[0].create_date"/>, <span t-field="docs[0].create_date"/></h2>
+                <h3> Invoice Period <span t-field="docs[0].__last_update"/> - <span t-field="docs[0].__last_update"/> </h3>
+
+
+                <table class="table table-condensed" border="1">
+                       <thead>
+                            <tr>
+                                <th>SN</th>
+                                <th class="text-left">Customer Name</th>
+                                <th class="text-left">Teller Name</th>
+
+                                <th class="text-left">Teller Date</th>
+                                <th class="text-left">Invoice Date</th>
+
+                                <th class="text-left">Teller Amount</th>
+
+
+                                <th class="text-left">Invoice Amount</th>
+                                 <th class="text-left">Sales Person</th>
+                                  <th class="text-left">Bank</th>
+                                <th class="text-left">Teller Number</th>
+
+                            </tr>
+                       </thead>
+
+
+                    <t t-foreach="docs" t-as="doc">
+                        <t t-set="invoice_total" t-value="invoice_total+doc.amount_total"/>
+                    <div class="row">
+
+
+                        <tbody class="report_tbody">
+
+
+                                    <tr t-if="doc.id">
+                                        <td class="text-left">
+
+                                          <span t-esc="sn"/>
+                                        </td>
+                                        <td class="text-left">
+                                           <span  t-field="doc.partner_id"/>
+                                        </td>
+                                        <td class="text-left">
+                                           <span t-field="doc.teller_name"/>
+                                        </td>
+
+                                        <td class="text-left">
+                                            <span t-field="doc.teller_date"/>
+                                        </td>
+                                        <td class="text-left">
+                                            <span t-field="doc.date_invoice"/>
+                                        </td>
+
+                                         <td class="text-left">
+                                            <span t-field="doc.teller_amount"/>
+                                        </td>
+
+
+                                         <td class="text-left">
+                                            <span t-field="doc.amount_total"/>
+
+                                        </td>
+
+                                        <td class="text-left">
+                                            <span t-field="doc.salesp"/>
+                                        </td>
+                                        <td class="text-left">
+                                            <span t-field="doc.teller_bank"/>
+                                        </td>
+                                        <td class="text-left">
+                                            <span t-field="doc.teller_id"/>
+                                        </td>
+                                          <t t-set="sn" t-value="sn+1"/>
+                                    </tr>
+
+                        </tbody>
+
+                    </div> <!-- Row DiV -->
+                    </t> <!-- foreach docs t -->
+                </table>
+                <h3>INVOICE TOTAL FOR PERIOD = <t t-esc="invoice_total"/></h3>
+                <div class="oe_structure"/>
+            </div> <!-- Page DIV -->
+            </t>
+            </t>
+        </template>
+
+
+
+    </data>
+</odoo>

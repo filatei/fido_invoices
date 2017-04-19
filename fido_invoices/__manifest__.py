@@ -22,6 +22,9 @@
     'data': [
         # 'security/ir.model.access.csv',
         'views/fido_invoices_views.xml',
-      #  'views/templates.xml',
+        'views/fido_invoices_report.xml',
+        'views/fido_report_invoice.xml',
+
+        #  'views/templates.xml',
     ],
 }

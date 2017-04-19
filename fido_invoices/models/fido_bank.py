@@ -1,8 +1,4 @@
 from openerp import api, fields, models
-import datetime
-import time
-from datetime import date,timedelta
-from dateutil.relativedelta import relativedelta
 from openerp.exceptions import UserError, ValidationError
 import logging
 

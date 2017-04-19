@@ -4,6 +4,24 @@
             <field name="model">account.invoice</field>
             <field name="inherit_id" ref="account.invoice_form"/>
             <field name="arch" type="xml">
+                <!--
+                <field name="type" position="after">
+                    <group string="Bags"  >
+                        <div class="oe_right">
+
+                            <label string="70/bag&#x20;" />
+                            <label string="80/bag&#x20;" />
+                            <label string="80/bag&#x20;" />
+                          <p>
+                            <field name="nbags70" />
+
+                            <field name="nbags80"  />
+
+                            <field name="nbags100"  />
+                            </p>
+                        </div>
+                    </group>
+                </field> -->
                 <field name="partner_id" position="replace">
                     <field name="partner_id"
                         context="{'search_default_customer':1, 'show_address': 1}"
@@ -28,8 +46,13 @@
                 <field name="user_id" position="replace">
                     <field name="salesp"/>
                 </field>
+                <field name="team_id" position="after">
+                    <field name="nbags70" string="Price_70"/>
+                </field>
 
-
+                <field name="nbags70" position="after">
+                    <field name="nbags80" string="Price_80"/>
+                </field>
 
 
             </field>

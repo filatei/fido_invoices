@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <!-- Print Report for Fido Payroll List View -->
+
+        <report
+            id="fido_invoice_report_action"
+            model="account.invoice"
+            string="FIDO INVOICE REPORT"
+            report_type="qweb-html"
+            name="fido_invoices.invoicereport"
+            file="fido_invoices.invoicereport"
+
+        />
+
+    </data>
+</odoo>
