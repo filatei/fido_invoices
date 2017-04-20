@@ -13,6 +13,8 @@ class fido_invoice(models.Model):
     _inherit = 'account.invoice'
     #_name = 'fido.invoice'
     _description = 'Extends account.invoice to add new fields'
+    inv_line_ids = fields.Many2many('account.invoice.line', string='Invoice Lines',
+                                       readonly=True, states={'draft': [('readonly', False)]}, copy=True)
 
     date_invoice = fields.Date(string='Invoice Date', default=date.today(),store=True,
              readonly=True, states={'draft': [('readonly', False)]}, index=True,
@@ -46,8 +48,10 @@ class fido_invoice(models.Model):
     nbags100 = fields.Float(compute='_compute_bags', string='100 per Bag',readonly=True,
                               store=True,track_visibility='onchange')
 
+    product_name = fields.Float(compute='_compute_line', string='Product', readonly=True,
+                           store=True, track_visibility='onchange')
+
     def _teller_amount(self):
-        _logger.info("*** LOGGING Processing  teller_name %s",  self.teller_name)
         self.teller_amount = self.teller_id.teller_amount
 
     _sql_constraints = [
@@ -62,3 +66,17 @@ class fido_invoice(models.Model):
         self.nbags80 = self.teller_amount / 80.0
         self.nbags85 = self.teller_amount / 85.0
         self.nbags100 = self.teller_amount / 100.0
+
+    @api.one
+    def _compute_line(self):
+        item_obj = self.env['account.invoice']
+
+        itemid = item_obj.search(['invoice_line_ids'])
+        _logger.info("*** LOGGING Processing  account_invoice-obj %s", itemid)
+        for item in itemid:
+            print item
+            _logger.info("*** LOGGING Processing  account_invoice-Line %s", item)
+
+        self.product_name = self.invoice_line_ids[0].name
+        self.product_qty = self.invoice_line_ids[0].quantity
+        self.product_price = self.invoice_line_ids[0].price_unit
