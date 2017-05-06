@@ -168,4 +168,5 @@ with open(SALESFILE, 'rb') as csvfile:
             CreateInvoice().icreate(invoice_line_data,partnerid,userid)
         except:
             print ("opps. Error")
+
         self._cr.commit()
