@@ -19,9 +19,7 @@
                 <field name="teller_bank" position="after">
                     <field name="teller_amount"/>
                 </field>
-                <field name="teller_amount" position="after">
-                    <field name="amount_total_signed" string="Invoice Amt"/>
-                </field>
+
 
                 <field name="date_invoice" position="replace">
                     <field name="teller_date"/>
