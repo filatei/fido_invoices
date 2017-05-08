@@ -11,8 +11,8 @@ _logger = logging.getLogger(__name__)
 
 # get partner to create from a csv file
 DICTFILE = 'fidodict.csv'
-outfile = open('/tmp/update_partner.out','w')
-errfile = open('/tmp/update_partner.err','w')
+outfile = open('/tmp/create_partner.out','w')
+errfile = open('/tmp/create_partner.err','w')
 with open(DICTFILE, 'rb') as csvfile:
     line = csv.DictReader(csvfile)
     for row in line:
@@ -40,6 +40,6 @@ self._cr.commit()
 errfile.close()
 outfile.close()
 print('See out and err files /tmp/update_partner.err or .out\n Content of error file below:\n')
-print ('====================ERRORS in /tmp/update_partner.err============\n')
+print ('====================ERRORS in /tmp/create_partner.err============\n')
 
-print ('====================================================================\n')
+print ('===============SUCCESSFUL OUTPUT IN /tmp/create_partner.out=====================================================\n')
