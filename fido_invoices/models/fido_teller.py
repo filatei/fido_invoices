@@ -11,4 +11,4 @@ class fido_teller(models.Model):
                 store=True, domain="[('customer', '=', True)]")
     date = fields.Date(string='Teller Date', required=True, help="Teller Date.")
     teller_amount = fields.Float(string='Teller Amount', required=True, help='Teller Amount')
-    bank = fields.Many2one('fido.bank', string='Bank Name',required=True)
+    bank = fields.Many2one('res.bank', string='Bank Name',required=True)

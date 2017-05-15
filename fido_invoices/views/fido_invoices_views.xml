@@ -5,11 +5,13 @@
 
             <field name="model">account.invoice</field>
             <field name="inherit_id" ref="account.invoice_tree"/>
-            <field name="limit">220</field>
+
             <field name="arch" type="xml">
+                <!--
                 <field name="user_id" position="replace">
                     <field name="salesp"/>
                 </field>
+                -->
                 <field name="partner_id" position="after">
                     <field name="teller_id"/>
                 </field>
@@ -32,9 +34,6 @@
                 </field>
                 <field name="origin" position="replace">
                     <field name="team_id"/>
-                </field>
-                <field name="residual_signed" position="replace">
-                    <field name="product_name"/>
                 </field>
 
 
@@ -69,18 +68,11 @@
                 <field name="teller_date" position="after"  >
                     <field name="teller_amount" />
                 </field>
+                <!--
                 <field name="user_id" position="replace">
                     <field name="salesp"/>
                 </field>
-                <field name="team_id" position="after">
-                    <field name="nbags70" string="Price_70"/>
-                </field>
-
-                <field name="nbags70" position="after">
-                    <field name="nbags80" string="Price_80"/>
-                </field>
-
-
+                -->
             </field>
       </record>
 

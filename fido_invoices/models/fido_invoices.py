@@ -22,8 +22,10 @@ class fido_invoice(models.Model):
     teller_id = fields.Many2one('fido.teller',string='Teller id', store=True,help='Unique Teller No')
 
     teller_amount = fields.Float(related='teller_id.teller_amount',string='Teller Amount',readonly=True,store=True)
-    teller_bank = fields.Many2one(related='teller_id.bank',store=True,readonly=True,
-            string='Teller Bank',track_visibility='onchange')
+    teller_bank = fields.Many2one('res.bank', string='Bank', readonly=True, states={'draft': [('readonly', False)]}, \
+                                  help='Select the Bank from which teller was drawn')
+    # teller_bank = fields.Many2one(related='teller_id.bank',store=True,readonly=True,
+    #        string='Teller Bank',track_visibility='onchange')
     teller_date = fields.Date(related='teller_id.date', string='Teller Date', store=True,
                               track_visibility='onchange',readonly=True)
     teller_name = fields.Many2one(related='teller_id.teller_name', string='Teller Name',readonly=True,
@@ -33,9 +35,18 @@ class fido_invoice(models.Model):
     partner_id = fields.Many2one('res.partner', string='Partner', change_default=True,
              required=True, readonly=True,store=True, states={'draft': [('readonly', False)]},
              track_visibility='always')
-    salesp = fields.Many2one(related='partner_id.user_id',string='Salesperson', track_visibility='onchange',
+    user_id = fields.Many2one(related='partner_id.user_id',string='Salesperson', track_visibility='onchange',
              readonly=True,store=True, states={'draft': [('readonly', False)]})
 
+
+    def _teller_amount(self):
+        self.teller_amount = self.teller_id.teller_amount
+
+    _sql_constraints = [
+        ('name_uniq', 'unique (teller_id,teller_name,teller_bank)', "Teller name/bank/id already exists !"),
+    ]
+
+"""
     # fields for derived bags
     nbags70 = fields.Float(compute='_compute_bags',  string='70 per Bag',readonly=True,
                               store=True,track_visibility='onchange')
@@ -50,14 +61,9 @@ class fido_invoice(models.Model):
 
     product_name = fields.Float(compute='_compute_line', string='Product', readonly=True,
                            store=True, track_visibility='onchange')
+"""
 
-    def _teller_amount(self):
-        self.teller_amount = self.teller_id.teller_amount
-
-    _sql_constraints = [
-        ('name_uniq', 'unique (teller_id,teller_name,teller_bank)', "Teller name/bank/id already exists !"),
-    ]
-
+"""
     @api.one
     @api.depends('teller_amount')
     def _compute_bags(self):
@@ -80,3 +86,4 @@ class fido_invoice(models.Model):
         self.product_name = self.invoice_line_ids[0].name
         self.product_qty = self.invoice_line_ids[0].quantity
         self.product_price = self.invoice_line_ids[0].price_unit
+"""
