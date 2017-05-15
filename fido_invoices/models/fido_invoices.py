@@ -13,8 +13,8 @@ class fido_invoice(models.Model):
     _inherit = 'account.invoice'
     #_name = 'fido.invoice'
     _description = 'Extends account.invoice to add new fields'
-    inv_line_ids = fields.Many2many('account.invoice.line', string='Invoice Lines',
-                                       readonly=True, states={'draft': [('readonly', False)]}, copy=True)
+    inv_line_ids = fields.Many2many('account.invoice.line', string='Invoice Lines',store=True,\
+                        readonly=True, states={'draft': [('readonly', False)]}, copy=True)
 
     date_invoice = fields.Date(string='Invoice Date', default=date.today(),store=True,
              readonly=True, states={'draft': [('readonly', False)]}, index=True,
@@ -22,10 +22,9 @@ class fido_invoice(models.Model):
     teller_id = fields.Many2one('fido.teller',string='Teller id', store=True,help='Unique Teller No')
 
     teller_amount = fields.Float(related='teller_id.teller_amount',string='Teller Amount',readonly=True,store=True)
-    teller_bank = fields.Many2one('res.bank', string='Bank', readonly=True, states={'draft': [('readonly', False)]}, \
-                                  help='Select the Bank from which teller was drawn')
-    # teller_bank = fields.Many2one(related='teller_id.bank',store=True,readonly=True,
-    #        string='Teller Bank',track_visibility='onchange')
+    teller_bank = fields.Many2one(related='teller_id.bank', string='Bank', track_visibility='onchange',\
+             readonly=True,store=True)
+
     teller_date = fields.Date(related='teller_id.date', string='Teller Date', store=True,
                               track_visibility='onchange',readonly=True)
     teller_name = fields.Many2one(related='teller_id.teller_name', string='Teller Name',readonly=True,
@@ -35,7 +34,7 @@ class fido_invoice(models.Model):
     partner_id = fields.Many2one('res.partner', string='Partner', change_default=True,
              required=True, readonly=True,store=True, states={'draft': [('readonly', False)]},
              track_visibility='always')
-    user_id = fields.Many2one(related='partner_id.user_id',string='Salesperson', track_visibility='onchange',
+    user_id = fields.Many2one(related='partner_id.user_id',string='Salesperson', track_visibility='onchange',\
              readonly=True,store=True, states={'draft': [('readonly', False)]})
 
 
