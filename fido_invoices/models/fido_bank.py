@@ -10,8 +10,7 @@ class fido_bank(models.Model):
 
     name = fields.Char(string='Bank Name',required=True)
     contact = fields.Text(string='Contact Address')
-    ngn_acct_no = fields.Char(string='NGN Account')
-    usd_acct_no = fields.Char(string='USD Account')
+    address = fields.Text(string='Branch Address')
 
     _sql_constraints = [
         ('name_uniq', 'unique (name)', "Bank Name already exists !"),
