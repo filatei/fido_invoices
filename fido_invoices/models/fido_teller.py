@@ -12,3 +12,7 @@ class fido_teller(models.Model):
     date = fields.Date(string='Teller Date', required=True, store=True,help="Teller Date.")
     teller_amount = fields.Float(string='Teller Amount', required=True,store=True,help='Teller Amount')
     bank = fields.Many2one('res.bank', string='Bank Name',required=True,store=True,help='Teller/POS Bank')
+
+    _sql_constraints = [
+        ('tell_uniq', 'unique (name,teller_name,bank)', "fido.teller: Teller No/Name/bank already exists !"),
+    ]
