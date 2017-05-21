@@ -40,9 +40,9 @@ try:
 
     assert uid,'com.login failed'
     version = common.version()
-    assert version['server_version'] == '10.0','Server not 10.0'
+    # assert version['server_version'] == '10.0','Server not 10.0'
 except Exception, e:
-    print version['server_version'],str(e)
+
     raise
 
 
@@ -71,21 +71,66 @@ def csvextract():
 
 def get_bagger(baggername):
     # creates a bagger if not exist in hr.employee and return bagger_id
+    # Also creates its contract
     try:
-
+        jobid = models.execute_kw(db, uid, password, 'hr.job', 'search_read', \
+                                  [[['name', '=', 'Bagger']]], {'fields': ['id']})
+        assert jobid, 'no jobid found for job Bagger'
+        print 'Jobid',str(jobid)
         bagger_hr_obj = models.execute_kw(db, uid, password, 'hr.employee', 'search_read', \
                          [[['name', '=', baggername]]], {'fields': ['id']})
+
         if not bagger_hr_obj:
             # Create Bagger in hr.employee
-            jobid = models.execute_kw(db, uid, password, 'hr.job', 'search_read', \
-                            [[['name', '=', 'Bagger']]], {'fields': ['id']})
-            assert jobid,'no jobid found for job Bagger'
-            print 'JOB ID: ' + str(jobid)
+
+
             bagger_hr = models.execute_kw(db, uid, password, 'hr.employee', 'create',\
                                           [{'name': baggername,'job_id': jobid[0]['id']}])
+
             assert bagger_hr,'Bagger Creation Fails'
+            print 'Bagger Employee Created for: '+ baggername
         else:
             bagger_hr = bagger_hr_obj[0]['id']
+
+        # Create contract in hr.contract if not exist
+        # print bagger_hr
+        employee_id = bagger_hr
+        hr_contract_obj = models.execute_kw(db, uid, password, 'hr.contract', 'search_read', \
+                            [[['employee_id', '=', employee_id]]], {'fields': ['id']})
+        if not hr_contract_obj:
+
+            contract_ref = baggername + '-Contract'
+            type_id = models.execute_kw(db, uid, password, 'hr.contract.type', 'search_read', \
+                            [[['name', '=', 'Employee']]], {'fields': ['id']})[0]['id']
+            struct_id = models.execute_kw(db, uid, password, 'hr.payroll.structure', 'search_read', \
+                            [[['name', '=', 'Contract']]], {'fields': ['id']})[0]['id']
+            date_start = date.today().strftime('%Y-%m-%d')
+            wage = 0.0
+            bagged_mult = 2.5
+            kpbg_sold = 0.0
+            obbg_sold = 0.0
+            bagsold_mult = 1
+            obbgsold_mult = 1
+            kpbgsold_mult = 1
+            cratesold_mult = 5
+            crate_sold = 0.0
+            disp_sold = 0.0
+            dispsold_mult =25
+            sal_adv = loan_adv = payee = days_absent = 0.0
+
+            hr_contract = models.execute_kw(db, uid, password, 'hr.contract', 'create',\
+                            [{'name': contract_ref,'employee_id':employee_id,'job_id':jobid[0]['id'],'type_id': type_id,'struct_id':struct_id,\
+                            'date_start':date_start,'wage':wage,
+                             'bagged_mult':bagged_mult,'kpbg_sold':kpbg_sold,'obbg_sold':obbg_sold,
+                              'bagsold_mult': bagsold_mult,'obbgsold_mult':obbgsold_mult,'kpbgsold_mult':kpbgsold_mult,
+                            'cratesold_mult':cratesold_mult,'crate_sold':crate_sold,'disp_sold':disp_sold,'dispsold_mult':dispsold_mult,
+                              'sal_adv':sal_adv,'loan_adv':loan_adv, 'payee':payee,'days_absent':days_absent\
+                              }])
+            assert hr_contract,'hr_contract creation fails'
+            print 'hr contract created for: ' + baggername
+        else:
+            hr_contract = hr_contract_obj[0]['id']
+
         return bagger_hr
     except Exception, e:
         print 'get_bagger() Error:\n' +  str(e)
@@ -105,13 +150,11 @@ errfile = open(ERRF,'w')
 head = 'SN,Name,QTY,MONTH,DATE,REMARK'
 outfile.write(head+'\n')
 errfile.write(head+'\n')
-
 bagger_totals = 0
 sn = esn = 0
 
 # Extract csv from xls file
 csvextract()
-
 
 # Open Bagger File and Update Bagger Record
 with open(SALESFILE, 'rb') as csvfile:
@@ -135,13 +178,12 @@ with open(SALESFILE, 'rb') as csvfile:
 
             # Call a function which if given the bagger_name would return bagger id from hr.employee
             # If bagger not in hr.employee, would create it before returning id
+            # it also creates a contract for new bagger
             bagger_hr_id = get_bagger(bagger_name)
             assert bagger_hr_id,'bagger_hr_id not valid'
             bagger_obj = models.execute_kw(db, uid, password, 'fido.bagger', 'search_read', \
                         [[['name', '=', bagger_hr_id], ['x_year', '=', byear],['x_month', '=', \
                             bmonth]]], {'fields': ['id','bagger_line_ids']})
-
-
 
             if not bagger_obj:
                 # Create bagger record in db
@@ -155,7 +197,7 @@ with open(SALESFILE, 'rb') as csvfile:
                                            [[['name', '=', bagger_hr_id], ['x_year', '=', byear], ['x_month', '=', \
                                                                                                    bmonth]]],
                                            {'fields': ['id', 'bagger_line_ids']})
-            print str(bagger_obj)
+
             for id in bagger_obj[0]['bagger_line_ids']:
                 bagger_line = models.execute_kw(db, uid, password, 'fido.bagger.line', 'search_read', \
                                                [[['id', '=', id]]],
@@ -168,12 +210,13 @@ with open(SALESFILE, 'rb') as csvfile:
             line_ids = [(0,0,{'fido_date': bdate.strftime('%Y-%m-%d'),
                             'x_quantity': qty
                           })]
-            print 'Bagger id: ' +str(bagger_id)
+
             # Create Bagger Line ids
             bagger_line =models.execute_kw(db, uid, password, 'fido.bagger', 'write', [[bagger_id], {\
                             'bagger_line_ids': line_ids}])
 
             assert bagger_line,'Bagger Line Id creation failed'
+            print 'Bagger Line record created for: ' + str([bagger_name,bdate,qty])
             bagger_totals = bagger_totals + int(qty)
             sn = sn + 1
             outstr = str(sn)+','+bagger_name+','+str(qty)+','+bmonth+','+bdate.strftime('%Y.%m.%d')+','+str(byear)
@@ -184,7 +227,7 @@ with open(SALESFILE, 'rb') as csvfile:
             esn = esn + 1
             errstr = str(esn)+','+bagger_name+','+str(qty)+','+bmonth+','+str(bdate.strftime('%Y.%m.%d'))+','+str(byear)+',"'+ str(e)+'"'
             errfile.write(errstr+'\n')
-            raise
+            # raise
 
 print 'Total Bags: '+ "{:,}".format(bagger_totals)
 print str(sn) + ' Records Successful'
