@@ -48,9 +48,9 @@ try:
 
     assert uid,'com.login failed'
     version = common.version()
-    assert version['server_version'] == '10.0','Server not 10.0'
+    # assert version['server_version'] == '10.0','Server not 10.0'
 except Exception, e:
-    print version['server_version'],str(e)
+
     raise
 
 

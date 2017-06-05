@@ -41,6 +41,7 @@ try:
     assert uid,'com.login failed'
     version = common.version()
     # assert version['server_version'] == '10.0','Server not 10.0'
+    print 'Logged in to Odoo Version: ',version
 except Exception, e:
 
     raise
@@ -70,31 +71,33 @@ def csvextract():
                 writer.writerow(row)
 
 def get_bagger(baggername):
-    # creates a bagger if not exist in hr.employee and return bagger_id
-    # Also creates its contract
+    # creates a bagger if not exist in hr.employee and/or return bagger_id
+    # Also creates its contract if need be
     try:
-        jobid = models.execute_kw(db, uid, password, 'hr.job', 'search_read', \
+        jobid_obj = models.execute_kw(db, uid, password, 'hr.job', 'search_read', \
                                   [[['name', '=', 'Bagger']]], {'fields': ['id']})
-        assert jobid, 'no jobid found for job Bagger'
-        print 'Jobid',str(jobid)
+
+        if not jobid_obj:
+            job_id = models.execute_kw(db, uid, password, 'hr.job', 'create',\
+                                          [{'name': 'Bagger'}])
+        else:
+            job_id = jobid_obj[0]['id']
+
+        assert job_id,'Job id not set'
         bagger_hr_obj = models.execute_kw(db, uid, password, 'hr.employee', 'search_read', \
-                         [[['name', '=', baggername]]], {'fields': ['id']})
+                         [[['name', '=', baggername]]], {'fields': ['id','name']})
 
         if not bagger_hr_obj:
             # Create Bagger in hr.employee
-
-
-            bagger_hr = models.execute_kw(db, uid, password, 'hr.employee', 'create',\
-                                          [{'name': baggername,'job_id': jobid[0]['id']}])
-
-            assert bagger_hr,'Bagger Creation Fails'
+            employee_id = models.execute_kw(db, uid, password, 'hr.employee', 'create',\
+                                          [{'name': baggername,'job_id': job_id}])
+            assert employee_id,'Bagger Creation Fails'
             print 'Bagger Employee Created for: '+ baggername
         else:
-            bagger_hr = bagger_hr_obj[0]['id']
+            employee_id = bagger_hr_obj[0]['id']
+            print 'Using existing Bagger Employee : ' + bagger_hr_obj[0]['name']
 
         # Create contract in hr.contract if not exist
-        # print bagger_hr
-        employee_id = bagger_hr
         hr_contract_obj = models.execute_kw(db, uid, password, 'hr.contract', 'search_read', \
                             [[['employee_id', '=', employee_id]]], {'fields': ['id']})
         if not hr_contract_obj:
@@ -102,8 +105,17 @@ def get_bagger(baggername):
             contract_ref = baggername + '-Contract'
             type_id = models.execute_kw(db, uid, password, 'hr.contract.type', 'search_read', \
                             [[['name', '=', 'Employee']]], {'fields': ['id']})[0]['id']
-            struct_id = models.execute_kw(db, uid, password, 'hr.payroll.structure', 'search_read', \
-                            [[['name', '=', 'Contract']]], {'fields': ['id']})[0]['id']
+
+            struct_obj = models.execute_kw(db, uid, password, 'hr.payroll.structure', 'search_read', \
+                            [[['name', '=', 'Contract']]], {'fields': ['id']})
+
+            if not struct_obj:
+                struct_id = models.execute_kw(db, uid, password, 'hr.payroll.structure', 'create', \
+                                  [{'name': 'Contract','code':'Contract'}])
+            else:
+                struct_id = struct_obj[0]['id']
+
+            assert struct_id,'Payroll Structure Contract Not valid'
             date_start = date.today().strftime('%Y-%m-%d')
             wage = 0.0
             bagged_mult = 2.5
@@ -119,7 +131,7 @@ def get_bagger(baggername):
             sal_adv = loan_adv = payee = days_absent = 0.0
 
             hr_contract = models.execute_kw(db, uid, password, 'hr.contract', 'create',\
-                            [{'name': contract_ref,'employee_id':employee_id,'job_id':jobid[0]['id'],'type_id': type_id,'struct_id':struct_id,\
+                            [{'name': contract_ref,'employee_id':employee_id,'job_id':job_id,'type_id': type_id,'struct_id':struct_id,\
                             'date_start':date_start,'wage':wage,
                              'bagged_mult':bagged_mult,'kpbg_sold':kpbg_sold,'obbg_sold':obbg_sold,
                               'bagsold_mult': bagsold_mult,'obbgsold_mult':obbgsold_mult,'kpbgsold_mult':kpbgsold_mult,
@@ -127,13 +139,13 @@ def get_bagger(baggername):
                               'sal_adv':sal_adv,'loan_adv':loan_adv, 'payee':payee,'days_absent':days_absent\
                               }])
             assert hr_contract,'hr_contract creation fails'
-            print 'hr contract created for: ' + baggername
         else:
             hr_contract = hr_contract_obj[0]['id']
+            assert hr_contract,'Contract not set for bagger'
 
-        return bagger_hr
+        return employee_id
     except Exception, e:
-        print 'get_bagger() Error:\n' +  str(e)
+        print 'get_bagger() Error: ' +  str(e)
         raise
 
 
@@ -165,6 +177,9 @@ with open(SALESFILE, 'rb') as csvfile:
             dt = date.today()
             DAY = dt.day
             bagger_name = row['Name'].strip().upper()
+            if not bagger_name:
+                bagger_name = row['NAME'].strip().upper()
+
             qty = row['QTY'].strip()
             if not qty:
                 qty = 0
