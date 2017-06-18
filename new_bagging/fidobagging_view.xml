@@ -73,22 +73,22 @@
                     	<field name="name"/>
 						<field name="x_month"/>
 						<field name="x_year"/>
-						<field name="qty_total"/>
+
                     <group expand="0" string="Group By" >
-                        <filter string="Month" name="Responsible" context="{'group_by':'x_month'}"/>
-                        <filter string="Year" name="Responsible" context="{'group_by':'x_year'}"/>
-                        <filter string="Bagger" name="Responsible" context="{'group_by':'name'}"/>
+                        <filter string="Month" domain="[]" context="{'group_by':'x_month'}"/>
+                        <filter string="Year" domain="[]" context="{'group_by':'x_year'}"/>
+                        <filter string="Bagger" domain="[]" context="{'group_by':'name'}"/>
                     </group>
                </search>
             </field>
         </record>
-		
-			
+
 		<!-- Bagger Base Form to display inherited employee on another level after over-riding default employee-->
 		<record id ="bagger_menu_action_default" model="ir.actions.act_window">
 			<field name="name">Employees</field>
 			<field name="res_model">hr.employee</field>
 			<field name="view_mode">kanban,tree,form</field>
+			<field name="search_view_id" ref="bagger_search_view"/>
 		</record> 
 
 		<!--Menu item for Employee -->

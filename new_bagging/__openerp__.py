@@ -1,8 +1,8 @@
 {
-	'name': 'Bag Collection',
-	'version': '1.0',
-	'description': """FIDO Accounting Extension For Baggers""",
-	'author': 'Adesanya Olusegun',
+	'name': 'Fido Bagger Records',
+	'version': '1.1',
+	'description': """FIDO HR Extension For Baggers""",
+	'author': 'GTS',
 	'depends': ['hr'],
 	'data': ['fidobagging_view.xml'],
 	'demo': [],
