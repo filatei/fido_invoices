@@ -27,10 +27,10 @@ if not os.path.exists('./OUT'):
 WBFILE = args['csvfile']
 
 try:
-    db = 'fidodb'
-    username = 'admin'
-    password = 'admin'
-    port = '8069'
+    db = 'FPLDB10'
+    username = 'ebi'
+    password = 'ebi'
+    port = '8071'
     host = 'localhost'
     url = 'http://%s:%s' % (host, port)
     models = xmlrpclib.ServerProxy('%s/xmlrpc/2/object' % (url))
@@ -72,7 +72,8 @@ def create_employee(empname,jobid,acctid):
                                   [[['name', '=', empname]]], {'fields': ['id']})
     if not emp_obj:
         emp_id = models.execute_kw(db, uid, password, 'hr.employee', 'create', \
-                               [{'name': empname, 'bank_account_id': acctid, 'job_id': jobid}])
+                               [{'name': empname, 'bank_account_id': acctid, 'job_id': jobid,'mobile_phone':mphone,'work_phone':wphone,\
+                                 'work_location':wloc,'birthday':bday}])
         print 'Employee  ' + employee + ' Created Successfully!'
     else:
         print 'Employee Exists: '+ employee
@@ -151,7 +152,7 @@ with open(WBFILE, 'rb') as csvfile:
         try:
             employee = row['NAME'].strip().upper()
             if row.has_key('ACCOUNT NO'):
-                acctno = row['ACCOUNT NO'].strip()
+                acctno = row['ACCOUNT NO']
             else:
                 acctno = row['ACCOUNT NUMBER'].strip()
             title = row['JOB TITLE'].strip()
@@ -162,12 +163,25 @@ with open(WBFILE, 'rb') as csvfile:
             acct_id = create_bank_account_number(acctno)
             assert acct_id,'account id not valid'
 
-            emp_id = create_employee(employee,job_id,acct_id)
+            
+            mphone = row['MOBILE PHONE']
+            if 'False' in mphone:
+                mphone = None
+	        wphone = row['WORK PHONE']
+            if 'False' in wphone:
+                wphone = None
+
+            wloc = row['WORK LOCATION']
+            if 'False' in wloc:
+                wloc = None
+	        bday = row['BIRTHDAY']
+            if 'False' in bday:
+                bday = None
+	        emp_id = create_employee(employee,job_id,acct_id)
 
             assert emp_id, 'Employee Creation Failed'
             contract_id = create_contract(emp_id,job_id)
             assert contract_id,'Contract Creation failed'
-
             outstr = str(sn) + ',' + employee + ',' + title + ',' + acctno+',' + 'SUCCESS'
             outfile.write(outstr)
 
