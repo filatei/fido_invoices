@@ -7,6 +7,7 @@
 			<field name="res_model">fido.bagger</field>
 			<field name="view_type">form</field>
 			<field name="view_mode">tree,form</field>
+
 			<field name="help" type="html">
 				<p class="oe_view_nocontent_create"> Click create to add new bagging records.</p>
 			</field>
@@ -73,7 +74,7 @@
                     	<field name="name"/>
 						<field name="x_month"/>
 						<field name="x_year"/>
-
+						<field name="qty_total"/>
                     <group expand="0" string="Group By" >
                         <filter string="Month" domain="[]" context="{'group_by':'x_month'}"/>
                         <filter string="Year" domain="[]" context="{'group_by':'x_year'}"/>
@@ -82,13 +83,30 @@
                </search>
             </field>
         </record>
+		<record id="open_view_employee_tree" model="ir.actions.act_window">
+            <field name="name">Employees Structure</field>
+            <field name="res_model">hr.employee</field>
+            <field name="view_type">tree</field>
+            <field name="view_mode">tree,form</field>
+            <field name="view_id" ref="view_employee_tree"/>
+            <field name="domain">[('parent_id','=',False)]</field>
+            <field name="search_view_id" ref="view_employee_filter"/>
+        </record>
 
+        <record id="open_view_employee_list" model="ir.actions.act_window">
+            <field name="name">Employees</field>
+            <field name="res_model">hr.employee</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">form,tree</field>
+            <field name="view_id" eval="False"/>
+            <field name="search_view_id" ref="view_employee_filter"/>
+        </record>
 		<!-- Bagger Base Form to display inherited employee on another level after over-riding default employee-->
 		<record id ="bagger_menu_action_default" model="ir.actions.act_window">
 			<field name="name">Employees</field>
 			<field name="res_model">hr.employee</field>
 			<field name="view_mode">kanban,tree,form</field>
-			<field name="search_view_id" ref="bagger_search_view"/>
+
 		</record> 
 
 		<!--Menu item for Employee -->
@@ -102,7 +120,7 @@
 		<menuitem id="bagging_menu" 
 			name="Baggers" 
 			parent="hr.menu_open_view_employee_list_my"
-			action="bagger_menu_action" sequence="4" />
+			action="bagger_menu_action" sequence="10" />
 
 	</data>
 </openerp>
