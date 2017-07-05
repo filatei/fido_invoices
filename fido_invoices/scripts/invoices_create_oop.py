@@ -264,47 +264,13 @@ class Daily(object):
                                   skipinitialspace=True)
             for row in line:
                 try:
-                    tellername = row['TELLER NAME'].strip().upper()
-                    teller_no = row['TELLER NO'].strip().upper()
                     partner = row['CUSTOMER NAME'].strip().upper()
-                    if not teller_no:
-                        if not row['QTY'] and not row['RATE']:
-                            continue
-                        else:
-                            qty = row['QTY'].strip()
-                            price_unit = row['RATE'].strip()
-                            prodname = row['PRODUCT'].strip().upper()
-                            prod_obj = models.execute_kw(db, uid, password, 'product.product', 'search_read', \
-                                                         [[['name', '=', prodname]]],
-                                                         {'fields': ['id', 'property_account_income_id']})
-                            assert prod_obj, 'no prod_obj'
-
-                            product_id = prod_obj[0]['id']
-                            assert product_id, 'not valid product_id'
-                            prodacct_obj = prod_obj[0]['property_account_income_id']
-                            prod_account_id = prodacct_obj[0]
-                            assert prod_account_id, 'not valid prod_account_id'
-
-                            # assert price_unit,'not valid price_unit'
-
-                            lines = [
-                                (0, 0,
-                                 {
-                                     'product_id': product_id,
-                                     'quantity': qty,
-                                     'account_id': prod_account_id,
-                                     'name': prodname,
-                                     'price_unit': price_unit,
-                                     'uom_id': 1
-                                 }
-                                 )
-                            ]
-                            inv_id = models.execute_kw(db, uid, password, 'account.invoice', 'write',
-                                                       [[account_invoice_customer0], { \
-                                                           'invoice_line_ids': lines}])
-                            assert inv_id, 'inv_id not updated'
-                            continue
-
+                    if not partner:
+                        continue
+                    tellername = row['TELLER NAME'].strip().upper()
+                    if not tellername:
+                        continue
+                    teller_no = row['TELLER NO'].strip().upper()
                     tdate = row['TELLER DATE']
 
                     if ('/' not in str(tdate)) and ('.' not in str(tdate)):
@@ -394,7 +360,6 @@ class Daily(object):
                          }
                          )
                     ]
-
 
                     # DEAL With TELLER RECORD
 
@@ -497,6 +462,9 @@ d = Daily()
 
 # Extract csv from xls file
 d.csvextract()
+
+# import Expenses
+d.expense_imp()
 
 # Import Invoices
 

@@ -35,104 +35,112 @@ class Payroll(object):
         self.company =""
         self.saladv =""
         self.item_name =""
+        self.payroll_total = 0.0
 
 
     def migrate_9to10(self):
         # read from created file and write to Odoo10
 
-        #with open(file1, 'r') as f:
-        #    content = f.readlines()
-        #    #self.outs = ast.literal_eval(s)
-        #    # print ('s is'+s)
-        #for ln in content:
-        try:
-            self.cn = eval(self.outs)
-            for iname, value in self.cn.iteritems():
+        with open(file1, 'r') as f:
+            content = f.readlines()
+            #self.outs = ast.literal_eval(s)
+            # print ('s is'+s)
+            for ln in content:
+                try:
+                    cn = eval(str(ln))
+                    for iname, value in cn.iteritems():
 
-                fname = self.pname=self.cn[iname][0].strip()
-                fmonth = self.cn[iname][2].strip()
-                fyear = self.cn[iname][1].strip()
-                self.daysab = self.cn[iname][3]
-                self.saladv = self.cn[iname][4]
-                self.start_date = self.cn[iname][5]
-                self.end_date = self.cn[iname][6]
-                self.company = str(self.cn[iname][7].strip())
-                fido_payroll = []
-                fido_pay_id =""
-                for ik in range(0,len(self.cn[iname][8])):
-                    self.item_name = self.cn[iname][8][ik][0]
-                    # search for item name and if not exist create it
+                        fname = cn[iname][0].strip().upper()
+                        fmonth = cn[iname][2].strip()
+                        fyear = cn[iname][1].strip()
 
-                    item_obj = self.models.execute_kw(self.db, self.uid, self.password, 'fido.payroll.item', \
-                                        'search_read', [[['name', '=', self.item_name]]], {'fields': ['id','name']})
-                    if not item_obj:
-                        # create item_id
-                        item_id_new = self.models.execute_kw(self.db, self.uid, self.password, \
-                                        'fido.payroll.item', 'create',[{'name': self.item_name}])
-                        assert item_id_new,'pay item creation failed'
-                        item_obj = self.models.execute_kw(self.db, self.uid, self.password, 'fido.payroll.item', \
-                                                                  'search_read', [[['name', '=', self.item_name]]],
-                                                                 {'fields': ['id','name']})
-                        item_id = item_obj[0]['name']
-                        assert  item_id,'no item id'
+                        daysab = cn[iname][3]
+                        saladv = cn[iname][4]
+                        start_date = cn[iname][5]
+                        end_date = cn[iname][6]
+                        company = str(cn[iname][7].strip())
+                        fido_payroll = []
+                        fido_pay_id =""
+                        pay_total = cn[iname][8]
+                        deductions = cn[iname][9]
+                        for ik in range(0,len(cn[iname][10])):
+                            item_name = str(cn[iname][10][ik][0]).strip()
+                            # search for item name and if not exist create it
 
-                    else:
-                        item_id = item_obj[0]['name']
-                        assert item_id,'no item_id'
+                            item_obj = self.models.execute_kw(self.db, self.uid, self.password, 'fido.payroll.item', \
+                                                'search_read', [[['name', '=', item_name]]], {'fields': ['id','name']})
+                            if not item_obj:
+                                # create item_id
+                                item_id_new = self.models.execute_kw(self.db, self.uid, self.password, \
+                                                'fido.payroll.item', 'create',[{'name': item_name}])
+                                assert item_id_new,'pay item creation failed'
+                                item_obj = self.models.execute_kw(self.db, self.uid, self.password, 'fido.payroll.item', \
+                                                                          'search_read', [[['name', '=', item_name]]],
+                                                                         {'fields': ['id','name']})
+                                item_id = item_obj[0]['name']
+                                assert  item_id,'no item id'
 
-                    item_mult = self.cn[iname][8][ik][1]
-                    item_qty = self.cn[iname][8][ik][2]
-                    line_total = item_mult * item_qty
-                    pline = [
-                        (0, 0,
-                        {
-                            'item_id': item_id,
-                            'item_mult': item_mult,
-                            'item_qty': item_qty,
-                            'line_total':line_total,
+                            else:
+                                item_id = item_obj[0]['name']
+                                assert item_id,'no item_id'
 
-                        })]
+                            item_mult = cn[iname][10][ik][1]
+                            item_qty = cn[iname][10][ik][2]
+                            line_total = cn[iname][10][ik][3]
 
-                    print (fname+','+fmonth+','+fyear+','+self.item_name+ '\n')
+                            pline = [
+                                (0, 0,
+                                {
+                                    'item_id': item_id,
+                                    'item_mult': item_mult,
+                                    'item_qty': item_qty,
+                                    'line_total':line_total,
 
-                    # Create Payroll
-                    # get emp_id from employ_name
-                    self.emp_id = self.models.execute_kw(self.db, self.uid, self.password, 'hr.employee', \
-                                        'search_read', [[['name', '=', fname]]], {'fields': ['id']})
+                                })]
 
-                    assert self.emp_id,'no such emp_id'
-                    # from emp_id, extract contract details
+                            print (fname+','+fmonth+','+fyear+','+item_name+ '\n')
+
+                            # Create Payroll
+                            # get emp_id from employ_name
+                            emp_id = self.models.execute_kw(self.db, self.uid, self.password, 'hr.employee', \
+                                                'search_read', [[['name', '=', fname]]], {'fields': ['id']})
+
+                            assert emp_id,'no such emp_id'
+                            # from emp_id, extract contract details
+                            # pay_obj = self.models.execute_kw(self.db, self.uid, self.password, 'fido.payroll', \
+                            #                       'search_read', [[['name', '=', fname],['x_year', '=', fyear],['f_mnth', '=', fmonth]]], {'fields': ['id']})
+
+                            tstr = (emp_id[0]['id'], fmonth, fyear, daysab, saladv, start_date, end_date,company)
+                            print(str(tstr))
+
+                            if len(fido_payroll) == 0:
+                                pay_rec = {'name': emp_id[0]['id'],
+                                           'f_mnth': fmonth,
+                                           'x_year': fyear,
+                                           'daysabsent': daysab,
+                                           'saladv': saladv,
+                                           'start_date': start_date,
+                                           'end_date': end_date,
+                                           'company': company,
+                                           'deductions':deductions,
+                                           'payroll_line_ids': pline,
+                                           'payroll_total':pay_total,
+                                          }
+                                fido_pay_id = self.models.execute_kw(self.db, self.uid, self.password, 'fido.payroll', 'create', \
+                                                    [pay_rec])
 
 
-                    tstr = (self.emp_id[0]['id'], fmonth, fyear, self.daysab, self.saladv, self.start_date, self.end_date,self.company)
-                    print(str(tstr))
+                                assert fido_pay_id,'payroll creation failed'
+                                fido_payroll.append(fido_pay_id)
+                                print('created fido.payroll' + str(fido_pay_id))
+                            else:
+                                fido_pay_r = self.models.execute_kw(self.db, self.uid, self.password, 'fido.payroll',
+                                         'write', [[fido_pay_id],  {'payroll_line_ids': pline}])
+                                assert fido_pay_r,'fido payroll10 update fails'
 
-                    if len(fido_payroll) == 0:
-                        pay_rec = {'name': self.emp_id[0]['id'],
-                                   'f_mnth': fmonth,
-                                   'x_year': fyear,
-                                   'daysabsent': self.daysab,
-                                   'saladv': self.saladv,
-                                   'start_date': self.start_date,
-                                   'end_date': self.end_date,
-                                   'company': self.company,
-                                   'payroll_line_ids': pline
-                                  }
-                        fido_pay_id = self.models.execute_kw(self.db, self.uid, self.password, 'fido.payroll', 'create', \
-                                            [pay_rec])
-
-
-                        assert fido_pay_id,'payroll creation failed'
-                        fido_payroll.append(fido_pay_id)
-                        print('created fido.payroll' + str(fido_pay_id))
-                    else:
-                        fido_pay_r = self.models.execute_kw(self.db, self.uid, self.password, 'fido.payroll',
-                                     'write', [[fido_pay_id],  {'payroll_line_ids': pline}])
-                        assert fido_pay_r,'fido payroll10 update fails'
-
-        except Exception,e:
-            print(str(e))
-            raise
+                except Exception,e:
+                    print(str(e))
+                    raise
 
     def contract_update(self):
         # update odoo 10 contract for employee with Odoo 9 detais
@@ -223,12 +231,13 @@ class Payroll(object):
 
 
             # Move Workflow to Compute from Draft
-            compute_id = self.models.execute_kw(self.db, self.uid, self.password, 'fido.payroll', 'compute', pay_id)
-            assert compute_id,'Validation Failed'
+            #compute_id = self.models.exec_workflow(self.db, self.uid, self.password, \
+            #                'fido.payroll', 'compute', pay_id)
+            # assert compute_id,'Validation Failed'
 
             return pay_id
         except Exception, e:
-            print('Pay Staff Error for ' + ',' + emp_name + ',' + str(e))
+            print('Pay Staff Error for ' + ',' + emp_name + ','+ str(compute_id) +','+ str(e))
             raise
 
 
@@ -264,6 +273,7 @@ class Payroll(object):
 
 
                     assert emp_name, 'emp_name not good'
+                    print ('Emp Name: '+emp_name +'Start date: '+s.start_date)
                     # for Odoo 10 names in caps
                     self.name = emp_name.upper()
                     name = emp_name.upper()
@@ -281,6 +291,9 @@ class Payroll(object):
                     end_date = s.end_date
                     self.company = str(s.company)
                     company = str(s.company)
+                    payroll_total = s.payroll_total
+                    deductions = s.deductions
+                    self.payroll_total = s.payroll_total
 
                     lenlines = len(s.payroll_line_ids)
                     payroll_line_ids =[]
@@ -290,16 +303,22 @@ class Payroll(object):
                     cratesold_mult=kpbgsold_mult=kpbg_sold=obbg_sold=obbgsold_mult=0.0
 
                     for kk in range(0, lenlines):
-                        item_name = s.payroll_line_ids[kk].item_id
-                        print ('item name: ',item_name)
-                        assert item_name, 'No item name'
-                        self.item_name = s.payroll_line_ids[kk].item_id
+                        item_name = str(s.payroll_line_ids[kk].item_id).strip()
+                        print ('item name: item no '+ str(item_name)+','+str(lenlines))
+                        # assert item_name, 'No item name'
+
                         item_mult = s.payroll_line_ids[kk].item_mult
-                        self.item_mult = s.payroll_line_ids[kk].item_mult
+
                         item_qty = s.payroll_line_ids[kk].item_qty
-                        self.item_qty = s.payroll_line_ids[kk].item_qty
+
+
+                        line_total = s.payroll_line_ids[kk].line_total
+                        line = [item_name, item_mult, item_qty, line_total]
+                        payroll_line_ids.append(line)
+                        # self.payroll_line_ids.append(line)
 
                         # can we update contract here?
+                        """
                         if 'Base Salary' in item_name:
                             wage = item_qty
                         if 'Bagging Commission' in item_name:
@@ -317,9 +336,7 @@ class Payroll(object):
                             obbgsold_mult = item_mult
                             obbg_sold = item_qty
 
-                        line = [item_name, item_mult, item_qty]
-                        payroll_line_ids.append(line)
-                        self.payroll_line_ids.append(line)
+                        
 
                     self.contract = {'wage': wage, 'bagged_mult': bagged_mult, 'cratesold_mult': cratesold_mult,
                                      'dispsold_mult': dispsold_mult, 'kpbgsold_mult': kpbgsold_mult, 'obbgsold_mult': obbgsold_mult,
@@ -329,23 +346,22 @@ class Payroll(object):
                                      }
                     c_update = self._update_contract()
                     assert c_update,'contract update fails in payroll_migrate'
-
+                    """
                     # Create Payroll in Odoo 10
-                    pay_id = self.pay_staff()
-                    assert pay_id,'pay fails in payroll_migrate'
+                    # pay_id = self.pay_staff()
+                    # assert pay_id,'pay fails in payroll_migrate'
 
 
 
 
-                    self.outs[emp_name] = [emp_name, year, month,daysab,saladv,start_date,\
-                                        end_date,company,payroll_line_ids]
+                    self.outs[name] = [name, year, month,daysab,saladv,start_date,\
+                                        end_date,company,payroll_total,deductions,payroll_line_ids]
 
+                    # self.migrate_9to10()
 
+                    target.write(str(self.outs)+'\n')
 
-
-                    target.write(str(self.outs))
-
-                    target.write('\n')
+                    # target.write('\n')
                     self.outs.pop(name, None)
                     # print(str(self.outs[p.name])+'\n')
 
@@ -375,10 +391,7 @@ class Payroll(object):
 # Main
 file1 = '/tmp/payroll.txt'
 
-try:
-    os.remove(file1)
-except OSError:
-    pass
+
 
 target = open(file1, 'w')
 
@@ -397,7 +410,9 @@ p.login()
 # p.contract_update()
 
 p.payroll_migrate()
-
 target.close()
+p.migrate_9to10()
+
+
 
 print ('****    SEE '+file1)

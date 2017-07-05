@@ -1,5 +1,6 @@
 import xmlrpclib
 from datetime import datetime
+from dateutil.relativedelta import *
 from datetime import date
 import csv,os
 import logging
@@ -28,10 +29,10 @@ WBFILE = args['salesfile']
 
 #  Odoo Credentials
 try:
-    db = 'fidodb'
+    db = 'FPLDB10'
     username = 'admin'
-    password = 'admin'
-    port = '8069'
+    password = 'N0tAdmin'
+    port = '8071'
     host = 'localhost'
     url = 'http://%s:%s' % (host, port)
     models = xmlrpclib.ServerProxy('%s/xmlrpc/2/object' % (url))
@@ -186,7 +187,12 @@ with open(SALESFILE, 'rb') as csvfile:
 
             bmonth = row['MONTH'].strip().lower()
             bdate = datetime.strptime(row['DATE'].strip(), '%Y.%m.%d')
-            if bmonth != 'January':
+            if bdate.day <28:
+                bmonth = str(bdate.strftime('%B')).lower()
+            else:
+                bmonth =  str((bdate+relativedelta(months=+1)).strftime('%B').lower())
+            print ('Derived Month: '+bmonth)
+            if bmonth != 'january':
                 byear = str(bdate.year)
             else:
                 byear = str(bdate.year + 1)

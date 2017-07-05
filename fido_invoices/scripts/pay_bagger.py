@@ -67,7 +67,7 @@ def pay_staff(empname,daysabs,adv):
 
         return pay_id
     except Exception, e:
-        print 'Pay_Bagger Error for ' + ',' + employee + ',' + str(e)
+        print ( str(e))
         raise
 
 
@@ -127,6 +127,8 @@ class Bagger(object):
         self.sal_adv = 0.0
         self.company = ""
         self.payroll_total = 0
+        self.start_date = ""
+        self.end_date = ""
 
     def _pay(self):
         try:
@@ -153,18 +155,16 @@ class Bagger(object):
                                        [[['name', '=',empname ]]], {'fields': ['id']})
            assert emp_obj, 'employee not exist'
            pay_obj = models.execute_kw(db, uid, password, 'fido.payroll', 'search_read', \
-                                       [[['name', '=', empname], ['x_year', '=', year], ['f_mnth', '=', month]]], \
+                                       [[['name', '=', emp_obj[0]['id']], ['x_year', '=', year], ['f_mnth', '=', month]]], \
                                        {'fields': ['id']})
            if not pay_obj:
 
                pay_id = models.execute_kw(db, uid, password, 'fido.payroll', 'create', \
-                                               [{'name': emp_obj[0]['id'], 'x_year': year, 'f_mnth': month, \
-                                                 'start_date': self.start_date, 'end_date': self.end_date,
+                                               [{'name': emp_obj[0]['id'], 'x_year': year, 'f_mnth': month,\
                                                  'daysabsent': daysabs,
-                                                 'saladv': adv, 'company': self.company,'payroll_line_ids': pline,\
-                                                 'payroll_total':self.payroll_total}])
+                                                 'saladv': adv, 'company': self.company}])
                assert pay_id, 'Pay Creation Fails'
-               print 'Payroll Created for ' + empname
+               print ('Payroll Created for ' + str(empname))
 
                # Create Payroll Line ids
 
@@ -186,14 +186,14 @@ class Bagger(object):
         try:
             # pay bagger from bagger record
             bagger_obj = models.execute_kw(db, uid, password, 'fido.bagger', 'search_read', \
-                                        [[['x_month', '=', self.x_month],['x_year', '=', self.x_year]]], {'fields': ['id']})
+                                        [[['x_month', '=', self.x_month],['x_year', '=', self.x_year]]], {'fields': ['id','name','qty_total']})
             assert bagger_obj,'no bagger_obj'
             for kk in range(0,len(bagger_obj)):
                 self.employee = bagger_obj[kk]['name']
                 self.qty_total = bagger_obj[kk]['qty_total']
                 self.sal_adv = self.days_abs = 0.0
 
-                self.company = 'FIDO WATER KPANSIA'
+                self.company = 'fido1'
                 pay_id = self._pay()
                 assert pay_id, 'Staff Pay failed'
 

@@ -37,11 +37,6 @@ class Daily(object):
         self.name = ""
         self.total_inv = 0.0
         self.invoice_type = ""
-        self.teller_tot = 0.0
-        self.sn = self.esn = 0
-        self.bank = ""
-        self.teller_date = ""
-        self.teller_amount = 0.0
 
     def csvextract(self):
         wb = open_workbook(WBFILE)
@@ -100,7 +95,7 @@ class Daily(object):
     def create_teller(self,tellern, teller_no, userid):
         try:
             teller_name = models.execute_kw(db, uid, password, 'res.partner', 'search_read',
-                                            [[['name', '=', tellern]]], \
+                                            [[['name', '=', tellername]]], \
                                             {'fields': ['id']})
             # Create Name on Teller as Customer if not in DB
             if not teller_name:
@@ -112,12 +107,12 @@ class Daily(object):
 
             # Create Bank if not in DB
 
-            teller_bank = models.execute_kw(db, uid, password, 'res.bank', 'search_read', [[['name', '=', self.bank]]], \
+            teller_bank = models.execute_kw(db, uid, password, 'res.bank', 'search_read', [[['name', '=', bank]]], \
                                             {'fields': ['id']})
 
             if not teller_bank:
                 # Create the Bank
-                teller_bank = models.execute_kw(db, uid, password, 'res.bank', 'create', [{'name': self.bank}])
+                teller_bank = models.execute_kw(db, uid, password, 'res.bank', 'create', [{'name': bank}])
                 assert teller_bank, 'Bank Creation Fails'
             else:
                 teller_bank = teller_bank[0]['id']
@@ -125,8 +120,8 @@ class Daily(object):
             teller_rec = {'name': teller_no,
                           'teller_name': teller_n,
                           'bank': teller_bank,
-                          'date': self.teller_date,
-                          'teller_amount': self.teller_amount
+                          'date': teller_date,
+                          'teller_amount': teller_amount
                           }
             # Create Teller Record. Test if Teller Record exists because duplicate not allowed in fido.teller
             teller_obj = models.execute_kw(db, uid, password, 'fido.teller', 'search_read',
@@ -152,8 +147,6 @@ class Daily(object):
             return ""
 
     def expense_imp(self):
-        self.esn = self.sn = 0
-        account_bill = None
         with open(EXPENSEFILE, 'rb') as csvfile:
             line = csv.DictReader(csvfile, quotechar='"', delimiter=',', quoting=csv.QUOTE_ALL, \
                                   skipinitialspace=True)
@@ -174,7 +167,7 @@ class Daily(object):
                         ddt = datetime.fromordinal(datetime(1900, 1, 1).toordinal() + int(tdate) - 2)
                         e_date = ddt.strftime('%Y-%m-%d')
                     else:
-                        e_date = (datetime.strptime(tdate, '%d/%m/%Y')).strftime('%Y-%m-%d')
+                        e_date = (datetime.strptime(tdate, '%d.%m.%Y')).strftime('%Y-%m-%d')
                     print ('tdate: ' + str(tdate) + ' = ' + str(e_date))
 
                     assert e_date, 'Teller Date not good'
@@ -184,8 +177,6 @@ class Daily(object):
                                                     [[['name', '=', 'DAILY EXPENSES']]],
                                                     {'fields': ['id', 'name', 'user_id']})
                     vendor_id = partner_obj[0]['id']
-                    print ('vendor id'+str(partner_obj[0]['id']))
-                    assert vendor_id,'no vendor_id'
 
                     invoice_name = 'BILL/' + str(vendor_id) + '/' + e_date + '/' + str(randint(0, 99999))
 
@@ -193,7 +184,7 @@ class Daily(object):
                                                             [[['type', '=', invoice_type]]], {'fields': ['id', 'name']})
                     # assert account_invoice_obj,'no account_invoice_obj'
                     journal_id = 2
-                    account_id = 13
+                    account_id = 15
 
                     # Product info
                     prodname = title.upper()
@@ -207,7 +198,6 @@ class Daily(object):
                         product_id = models.execute_kw(db, uid, password, 'product.product', 'create', \
                                                        [{'name': prodname}])
                     assert product_id, 'not valid product_id'
-                    print ('prod id: '+str(product_id))
 
                     prod_account_id = 5
 
@@ -225,86 +215,45 @@ class Daily(object):
                          }
                          )
                     ]
-                    if not account_bill:
-                        account_bill = models.execute_kw(db, uid, password, 'account.invoice', 'create', \
+
+                    account_invoice_customer0 = models.execute_kw(db, uid, password, 'account.invoice', 'create', \
                                                                   [{'name': invoice_name,
 
                                                                     'journal_id': journal_id,
                                                                     'partner_id': vendor_id,
                                                                     'date_invoice': e_date,
-                                                                    'date_due': e_date,
                                                                     'account_id': account_id,
                                                                     'type': invoice_type,
                                                                     'invoice_line_ids': lines}])
-                        assert account_bill, 'Bill Creation Failed'
-                        print ('bill Created')
-                    else:
-                        account_upd = models.execute_kw(db, uid, password, 'account.invoice', 'write', \
-                                          [[account_bill], {'invoice_line_ids': lines}])
-                        assert account_upd,'bill not updated'
+                    assert account_invoice_customer0, 'Invoice Creation Failed'
 
+                    print 'Invoice for Teller ' + str(sn) + ': Customer: ' + partner + ' Created Successfully!'
                     # val_id = models.exec_workflow(db, uid, password, \
                     #                                  'account.invoice', 'invoice_open', account_invoice_customer0)
                     # assert val_id,'Invoice not validated'
 
-                    self.total_inv = self.total_inv + (float(qty) * float(price_unit))
-                    self.sn = self.sn + 1
+                    total_inv = total_inv + (float(qty) * float(price_unit))
+                    sn = sn + 1
 
                 except Exception, e:
                     print 'Invoice Creation Error.' + ',' + title + ',' + str(e)
-                    self.esn = self.esn + 1
+                    # esn = esn + 1
                     raise
 
     def invoice_imp(self):
-        self.sn = self.esn = 0
-        self.total_inv = 0.0
         with open(SALESFILE, 'rb') as csvfile:
             invoice_type = 'out_invoice'
             line = csv.DictReader(csvfile, quotechar='"', delimiter=',', quoting=csv.QUOTE_ALL, \
                                   skipinitialspace=True)
             for row in line:
                 try:
-                    tellername = row['TELLER NAME'].strip().upper()
-                    teller_no = row['TELLER NO'].strip().upper()
                     partner = row['CUSTOMER NAME'].strip().upper()
-                    if not teller_no:
-                        if not row['QTY'] and not row['RATE']:
-                            continue
-                        else:
-                            qty = row['QTY'].strip()
-                            price_unit = row['RATE'].strip()
-                            prodname = row['PRODUCT'].strip().upper()
-                            prod_obj = models.execute_kw(db, uid, password, 'product.product', 'search_read', \
-                                                         [[['name', '=', prodname]]],
-                                                         {'fields': ['id', 'property_account_income_id']})
-                            assert prod_obj, 'no prod_obj'
-
-                            product_id = prod_obj[0]['id']
-                            assert product_id, 'not valid product_id'
-                            prodacct_obj = prod_obj[0]['property_account_income_id']
-                            prod_account_id = prodacct_obj[0]
-                            assert prod_account_id, 'not valid prod_account_id'
-
-                            # assert price_unit,'not valid price_unit'
-
-                            lines = [
-                                (0, 0,
-                                 {
-                                     'product_id': product_id,
-                                     'quantity': qty,
-                                     'account_id': prod_account_id,
-                                     'name': prodname,
-                                     'price_unit': price_unit,
-                                     'uom_id': 1
-                                 }
-                                 )
-                            ]
-                            inv_id = models.execute_kw(db, uid, password, 'account.invoice', 'write',
-                                                       [[account_invoice_customer0], { \
-                                                           'invoice_line_ids': lines}])
-                            assert inv_id, 'inv_id not updated'
-                            continue
-
+                    if not partner:
+                        continue
+                    tellername = row['TELLER NAME'].strip().upper()
+                    if not tellername:
+                        continue
+                    teller_no = row['TELLER NO'].strip().upper()
                     tdate = row['TELLER DATE']
 
                     if ('/' not in str(tdate)) and ('.' not in str(tdate)):
@@ -315,7 +264,6 @@ class Daily(object):
                     print ('tdate: ' + str(tdate) + ' = ' + str(teller_date))
 
                     assert teller_date, 'Teller Date not good'
-                    self.teller_date = teller_date
                     salesperson = row['SALESPERSON'].strip().upper()
                     price_unit = rate = row['RATE']
                     qty = row['QTY']
@@ -395,16 +343,13 @@ class Daily(object):
                          )
                     ]
 
-
                     # DEAL With TELLER RECORD
 
                     teller_amount = row['TELLER AMOUNT'].strip().replace(',', '')
                     if not teller_amount:
                         teller_amount = 0.0
-                    self.teller_tot = self.teller_tot + float(teller_amount)
-                    self.teller_amount = teller_amount
+                    teller_tot = teller_tot + float(teller_amount)
                     bank = row['BANK'].strip().upper()
-                    self.bank = bank
 
                     # create teller record in DB
                     teller_id = self.create_teller(tellername, teller_no, user_id)
@@ -429,26 +374,26 @@ class Daily(object):
                                                                     'invoice_line_ids': lines}])
                     assert account_invoice_customer0, 'Invoice Creation Failed'
 
-                    print 'Invoice for Teller ' + str(self.sn) + ': Customer: ' + partner + ' Created Successfully!'
+                    print 'Invoice for Teller ' + str(sn) + ': Customer: ' + partner + ' Created Successfully!'
                     # val_id = models.exec_workflow(db, uid, password, \
                     #                                  'account.invoice', 'invoice_open', account_invoice_customer0)
                     # assert val_id,'Invoice not validated'
 
-                    outstr = str(self.sn+1) + ',' + row['TELLER NO'] + ',' + row['TELLER NAME'] + ',' + row['BANK'] \
+                    outstr = str(sn) + ',' + row['TELLER NO'] + ',' + row['TELLER NAME'] + ',' + row['BANK'] \
                              + ',' + row['CUSTOMER NAME'] + ',' + row['SALESPERSON'] + ',' + row['TELLER DATE'] + ',' + \
                              str(row['TELLER AMOUNT']) + ',' + str(row['QTY']) + ',' + str(row['RATE']) + ',' + str(
                         row['INVOICE DATE']) + \
                              ',' + row['LOCATION'] + ',' + row['BONUS'] + ',' + row['PRODUCT'] + ',' + 'SUCCESS'
                     outfile.write(outstr)
 
-                    self.total_inv = self.total_inv + (float(qty) * float(price_unit))
-                    self.sn = self.sn + 1
+                    total_inv = total_inv + (float(qty) * float(price_unit))
+                    sn = sn + 1
 
                 except Exception, e:
-                    print 'Invoice Creation Error.' + ',' + str(partner) + ',' + str(salesperson) + ',' + str(e)
+                    print 'Invoice Creation Error.' + ',' + partner + ',' + str(row['SALESPERSON']) + ',' + str(e)
                     # errstr = str(esn)+','+row['TELLER NO']+','+row['TELLER NAME']+','+row['BANK']+','+row['CUSTOMER NAME']+','+row['SALESPERSON']+','+row['TELLER DATE']+','+str(row['TELLER AMOUNT'])+','+str(row['QTY'])+','+str(row['RATE'])+','+str(row['INVOICE DATE'])+','+ str(e)
                     # errfile.write(errstr+'\n')
-                    self.esn = self.esn + 1
+                    esn = esn + 1
                     raise
 
 try:
@@ -475,6 +420,8 @@ DATAFOLDER = 'data'
 
 # Create csv files from sheets in Sales Workbook
 
+
+
 # Get  Salesperson/User
 
 # open the INVOICE worksheet and read its data into Odoo
@@ -492,29 +439,35 @@ head = 'SN,TELLER NO,TELLER NAME,BANK,CUSTOMER NAME,SALES PERSON,TELLER DATE,TEL
 outfile.write(head + '\n')
 errfile.write(head + '\n')
 
-# Initialise class Obj
+# Extract csv from xls file
 d = Daily()
 
-# Extract csv from xls file
 d.csvextract()
 
-# Import Invoices
+
+# import Expenses
+d.expenses_imp()
+
+dt = ''
+
+teller_tot = 0.0
+esn = sn = 1
 
 d.invoice_imp()
 
-print 'Total Invoiced: ' + "{:,}".format(d.total_inv)
-print 'Teller Total Invoiced: '+ "{:,}".format(d.teller_tot)
-if (d.teller_tot - d.total_inv) >0:
+print 'Total Invoiced: ' + "{:,}".format(total_inv)
+print 'Teller Total Invoiced: '+ "{:,}".format(teller_tot)
+if (teller_tot - total_inv) >0:
     print '******** POSITIVE INVOICING ************'
 else:
     print '******** NEGATIVE INVOICING  ***********'
-print str(d.sn) + ' Records Successful'
-print str(d.esn) + ' Records Failed'
-fr = (d.esn)/float(d.sn+d.esn)*100
+print str(sn) + ' Records Successful'
+print str(esn) + ' Records Failed'
+fr = (esn)/float(sn+esn)*100
 print 'FAIL RATE: ' +"{:5,.2f}".format(fr)+'%'
 print 'SUCCESS FILE: '+OUTF
 print 'ERROR FILE: '+ERRF
-outfile.write("{:,}".format(d.total_inv)+'\n')
+outfile.write("{:,}".format(total_inv)+'\n')
 errfile.close()
 outfile.close()
 
