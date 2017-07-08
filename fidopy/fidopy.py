@@ -18,12 +18,28 @@ class FidoPy():
         self.csvfile = ""
         self.teller_tot = 0.0
         self.datadir = "data"
+        self.data = {}
 
     def set_xlsfile(self,xlsfile):
         self.xlsfile = xlsfile
 
     def set_csvfile(self,csvfile):
         self.csvfile = csvfile
+
+    def update_data(self,dti,data):
+        """ append to data list of lists"""
+        if dti not in  self.data.keys():
+            self.data[dti] = [data]
+        else:
+
+            self.data[dti].append(data)
+
+
+    def teller_tot_update(self,tot):
+        self.teller_tot = self.teller_tot + float(tot)
+
+    def get_data(self):
+        return self.data
 
     def get_datadir(self):
         return self.datadir
@@ -40,8 +56,22 @@ class FidoPy():
     def get_teller_tot(self):
         return self.teller_tot
 
-    def teller_tot_update(self,tot):
-        self.teller_tot = self.teller_tot + float(tot)
+
+
+    def fix_date(self,tdate):
+        try:
+
+            if ('/' not in str(tdate)) and ('.' not in str(tdate)):
+                ddt = datetime.fromordinal(datetime(1900, 1, 1).toordinal() + int(tdate) - 2)
+                return ddt.strftime('%Y-%m-%d')
+            else:
+                if '/' in str(tdate):
+                    return (datetime.strptime(tdate, '%d/%m/%Y')).strftime('%Y-%m-%d')
+                elif '.' in str(tdate):
+                    return (datetime.strptime(tdate, '%d.%m.%Y')).strftime('%Y-%m-%d')
+        except Exception as e:
+            print (str(e))
+            raise
 
     def xls2csv(self):
         """ extracts worksheets from the workbook into files named by worksheet names
@@ -93,9 +123,10 @@ class FidoPy():
                     if not teller_no:
                         if not rate and not qty:
                             continue
-                        else:
-                            qty = row['QTY'].strip()
-                            price_unit = row['RATE'].strip()
+                    # Detect Invalid transaction. qty not positive or rate not +ve
+
+                    assert qty >0 and rate >0,'qty or rate not +ve'
+
 
                     prodname = row['PRODUCT'].strip().upper()
 
@@ -103,32 +134,15 @@ class FidoPy():
 
                     location = row['LOCATION'].strip()
 
-                    tdate = row['TELLER DATE']
-                    if ('/' not in str(tdate)) and ('.' not in str(tdate)):
-                        ddt = datetime.fromordinal(datetime(1900, 1, 1).toordinal() + int(tdate) - 2)
-                        teller_date = ddt.strftime('%Y-%m-%d')
-                    else:
-                        teller_date = (datetime.strptime(tdate, '%d/%m/%Y')).strftime('%Y-%m-%d')
+                    teller_date = self.fix_date(row['TELLER DATE'])
+
+
                     # print ('tdate: ' + str(tdate) + ' = ' + str(teller_date))
 
                     assert teller_date, 'Teller Date not good'
 
-                    invdate = row['INVOICE DATE']
-                    # fix date formatting
+                    dateinv = self.fix_date(row['INVOICE DATE'])
 
-                    if ('/' not in str(invdate)) and ('.' not in str(invdate)):
-                        dt = datetime.fromordinal(datetime(1900, 1, 1).toordinal() + int(invdate) - 2)
-
-                    else:
-                        dt = datetime.strptime(invdate, '%d/%m/%Y')
-
-                    dateinv = dt.strftime('%Y-%m-%d')
-
-                    # Detect Invalid transaction
-                    if not row['TELLER NO'] or qty <= 0 or price_unit <= 0:
-                        print row['TELLER NO'] + ' Invalid Data QTY: ' + qty + 'Rate: ' + price_unit
-                        # raise Exception('Invalid Transaction - no teller_no or -ve qty or 0 Rate')
-                        continue
 
                     # DEAL With TELLER RECORD
 
@@ -137,14 +151,24 @@ class FidoPy():
                         teller_amount = 0.0
                     self.teller_tot_update(teller_amount)
                     bank = row['BANK'].strip().upper()
-                    print((sn,dateinv,partner,salesperson,prodname,rate,qty,teller_amount,teller_no,bank,teller_date,tellername,location))
-                    print ('\n')
+
+                    # print((sn,dateinv,partner,salesperson,prodname,rate,qty,teller_amount,teller_no,bank,teller_date,tellername,location,'\n'))
+                    self.update_data(dateinv,[teller_no,teller_date,bank,tellername,partner,salesperson,prodname,rate,qty,teller_amount,location])
                     sn = sn + 1
 
         except Exception, e:
             print 'Invoice extraction Error.' + ',' + str(partner) + ',' + str(salesperson)\
                   + ',' + str(e)
             raise
+
+    def get_prices(self,dt):
+        self.invoice_list()
+        print 'Prices for: ',dt
+        print ('Customer,Teller_Amount')
+        thisdata =self.data[dt]
+        for k in range(0,len(thisdata)):
+            print (thisdata[k][4],float(thisdata[k][9]))
+
 
 def main():
     if not os.path.exists('./data'):
@@ -160,9 +184,12 @@ def main():
         TODAY = datetime.now().strftime('%d-%m-%Y')
         csvfile = 'data/INVOICE-' + TODAY + '.csv'
         f.set_csvfile(csvfile)
-        f.invoice_list()
+        # f.invoice_list()
         teller_tot = f.get_teller_tot()
-        print ('Teller Totals: ',teller_tot)
+        # print ('Teller Totals: ',teller_tot)
+        # print (f.get_data())
+        f.get_prices('2017-07-01')
+
     except Exception as e:
         raise
 
