@@ -1,5 +1,5 @@
 from datetime import datetime
-import csv,os
+import csv,os,sys
 import logging
 from xlrd import open_workbook
 from random import randint
@@ -19,6 +19,8 @@ class FidoPy():
         self.teller_tot = 0.0
         self.datadir = "data"
         self.data = {}
+        self.idate = ""
+        self.tmpdir = "/tmp"
 
     def set_xlsfile(self,xlsfile):
         self.xlsfile = xlsfile
@@ -43,6 +45,9 @@ class FidoPy():
 
     def get_datadir(self):
         return self.datadir
+
+    def get_tmpdir(self):
+        return self.tmpdir
 
     def get_xls(self):
         """ get the daily xls file from Yenagoa"""
@@ -76,8 +81,10 @@ class FidoPy():
     def xls2csv(self):
         """ extracts worksheets from the workbook into files named by worksheet names
             workbook name is set in self.xlsfile or self.set_xlsfile()
+            TODO: Ensure file xls exists
         """
         try:
+
             wb = open_workbook(self.get_xls())
             assert wb,'xls file not set perhaps'
             TODAY = datetime.now().strftime('%d-%m-%Y')
@@ -87,7 +94,7 @@ class FidoPy():
                 sheet = wb.sheet_by_index(i)
                 # print (sheet.name)
 
-                path = self.get_datadir() + '/%s.csv'
+                path = self.get_tmpdir() + '/%s.csv'
                 with open(path % (sheet.name.replace(" ", "") + '-' + TODAY), "w") as file:
                     writer = csv.writer(file, delimiter=",", quotechar='"', \
                                     quoting=csv.QUOTE_ALL, skipinitialspace=True)
@@ -104,6 +111,7 @@ class FidoPy():
             raise
 
     def invoice_list(self):
+        """ list invoices """
         INV_FILE = self.get_csv()
         sn = 1
         try:
@@ -119,7 +127,12 @@ class FidoPy():
                     partner = row['CUSTOMER NAME'].strip().upper()
                     price_unit = rate = row['RATE']
                     qty = row['QTY']
-
+                    tdate = row['TELLER DATE']
+                    dateinv = row['INVOICE DATE']
+                    if not tdate:
+                        continue
+                    if not dateinv:
+                        continue
                     if not teller_no:
                         if not rate and not qty:
                             continue
@@ -162,13 +175,20 @@ class FidoPy():
             raise
 
     def get_prices(self,dt):
-        self.invoice_list()
-        print 'Prices for: ',dt
-        print ('Customer,Teller_Amount')
-        thisdata =self.data[dt]
-        for k in range(0,len(thisdata)):
-            print (thisdata[k][4],float(thisdata[k][9]))
-
+        try:
+            # self.idate = dt.replace('/','.')
+            self.invoice_list()
+            print 'Prices for: ',dt
+            print 'Teller TOTAL: ',self.teller_tot
+            print ('Customer,Teller_Amount')
+            # print self.data
+            assert self.data[dt],'date data not available'
+            thisdata = self.data[dt]
+            for k in range(0,len(thisdata)):
+                print (thisdata[k][4],float(thisdata[k][9]))
+        except Exception as e:
+            print (str(e))
+            raise
 
 def main():
     if not os.path.exists('./data'):
@@ -179,16 +199,24 @@ def main():
     try:
 
         f = FidoPy()
-        f.set_xlsfile('/home/user1/Downloads/SATURDAY 01.07.2017.xls')
+        f.idate = '06.07.2017'
+        DIR ='/home/user1/Downloads/FIDO-DAILY/JULY 2017'
+        for filename in os.listdir(DIR):
+            if f.idate in filename:
+                f.set_xlsfile(DIR +'/'+ filename)
+                break
+        if not f.xlsfile:
+            print 'Source file with date',f.idate,'not exist'
+            sys.exit()
         f.xls2csv()
         TODAY = datetime.now().strftime('%d-%m-%Y')
-        csvfile = 'data/INVOICE-' + TODAY + '.csv'
+        csvfile = '/tmp/INVOICE-' + TODAY + '.csv'
         f.set_csvfile(csvfile)
-        # f.invoice_list()
-        teller_tot = f.get_teller_tot()
-        # print ('Teller Totals: ',teller_tot)
-        # print (f.get_data())
-        f.get_prices('2017-07-01')
+        #f.invoice_list()
+        #teller_tot = f.get_teller_tot()
+        #print ('Teller Totals: ',teller_tot)
+        #print (f.get_data())
+        f.get_prices('2017-07-06')
 
     except Exception as e:
         raise
