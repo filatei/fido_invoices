@@ -1,5 +1,6 @@
 import xmlrpclib
 from datetime import datetime
+from datetime import date
 import csv,os
 import logging
 from xlrd import open_workbook
@@ -9,7 +10,6 @@ _logger = logging.getLogger(__name__)
 
 """
 Create Payroll from csv file
-If Employees don't exist, create them using hr_create.py on the error file contain list of such staff
 """
 # Command line ArgumentHandling
 try:
@@ -27,10 +27,10 @@ if not os.path.exists('./OUT'):
 WBFILE = args['csvfile']
 
 try:
-    db = 'FPLDB10'
+    db = 'FPLDB'
     username = 'admin'
-    password = 'N0tAdmin'
-    port = '8071'
+    password = 'N0tadm1n'
+    port = '8070'
     host = 'localhost'
     url = 'http://%s:%s' % (host, port)
     models = xmlrpclib.ServerProxy('%s/xmlrpc/2/object' % (url))
@@ -44,35 +44,103 @@ except Exception, e:
     raise
 
 # Functions Definition
-def pay_staff(empname,daysabs,adv):
+
+def pay_bagger(empname,bagno,adv):
     try:
         emp_obj =  models.execute_kw(db, uid, password, 'hr.employee', 'search_read', \
                                   [[['name', '=', empname]]], {'fields': ['id']})
         assert emp_obj, 'employee not exist'
-        pay_obj = models.execute_kw(db, uid, password, 'fido.payroll', 'search_read', \
-                        [[['name', '=', empname], ['x_year', '=', year], ['f_mnth', '=', month]]],\
-                        {'fields': ['id']})
-        if not pay_obj:
-            pay_id = models.execute_kw(db, uid, password, 'fido.payroll', 'create', \
-                        [{'name': emp_obj[0]['id'],'x_year':year,'daysabsent':daysabs,'saladv':adv}])
-            assert pay_id,'Pay Creation Fails'
-            print 'Payroll Created for ' + empname
-        else:
-            pay_id = pay_obj[0]['id']
-            print 'Payroll Exists. Not Created'
+        item_tot = 2.5 * float(bagno)
+        adv_tot = -1.0 * float(adv)
+        line_ids = [(0,0,{
+            'item_id':'Bagging Commission',
+            'item_qty':bagno,
+            'item_mult':2.5,
+            'line_total':item_tot
 
-        # Move Workflow to Compute from Draft
+                     }),(0,1,{
+            'item_id':'Salary Advance Deduction(-ve)',
+            'item_qty':adv,
+            'item_mult':-1,
+            'line_total':adv_tot
+
+                     })]
+        pay_tot = item_tot + adv_tot
+        pay_id = models.execute_kw(db, uid, password, 'fido.payroll', 'create', \
+                               [{'name': emp_obj[0]['id'],'x_year':'2017','daysabsent':0,'saladv':adv,\
+                                'payroll_line_ids':line_ids,'payroll_total':pay_tot
+
+                                 }])
         compute_id = models.exec_workflow(db, uid, password, 'fido.payroll', 'compute', pay_id)
         # assert compute_id,'Validation Failed'
-
+        print 'Payroll Created for '+empname
         return pay_id
     except Exception, e:
         print 'Pay_Bagger Error for ' + ',' + employee + ',' + str(e)
         raise
 
+def pay_others(empname,daysabs,adv):
+    try:
+        emp_obj =  models.execute_kw(db, uid, password, 'hr.employee', 'search_read', \
+                                  [[['name', '=', empname]]], {'fields': ['id']})
+        assert emp_obj, 'employee not exist'
+        pay_obj =  models.execute_kw(db, uid, password, 'fido.payroll', 'search_read', \
+                                  [[['name', '=', empname],['x_year','=',year],['f_mnth','=',month]]], {'fields': ['id']})
+
+	if not pay_obj:
+
+            pay_id = models.execute_kw(db, uid, password, 'fido.payroll', 'create', \
+                               [{'name': emp_obj[0]['id'],'x_year':year,'daysabsent':daysabs,'saladv':adv\
+                                }])
+            print 'Payroll (other) Created for ' + empname
+            compute_id = models.exec_workflow(db, uid, password, 'fido.payroll', 'compute', pay_id)
+	else:
+	    pay_id = pay_obj[0]['id'] 
+            print 'Payroll Obj exists'
+        return pay_id
+    except Exception, e:
+        print 'Pay_Other Error for ' + ',' + employee + ',' + str(e)
+        raise
+
+def contract_update(empname,kpsales,obsales,dispsales,cratesales):
+    """ Update the Employee contract with live sales data"""
+
+    try:
+        contr_obj = models.execute_kw(db, uid, password, 'hr.contract', 'search_read', \
+                                  [[['employee_id.name', '=', empname]]], {'fields': ['id', \
+                                                                                     'name', 'employee_id',
+                                                                                     'crate_sold', 'disp_sold',
+                                                                                     'obbg_sold', 'kpbg_sold']})
+        assert contr_obj,'Contract_obj read error'
+
+        if len(contr_obj) > 1:
+            print "Contract Before 1: ",contr_obj[1]
+        else:
+            print "Contract Before 0: ",contr_obj[0]
+        lenc = len(contr_obj)
+        contr_id = contr_obj[lenc-1]['id']
+
+        contr_upd = models.execute_kw(db, uid, password, 'hr.contract', 'write',\
+                    [[contr_id], {'crate_sold': cratesales,'disp_sold':dispsales,\
+                    'obbg_sold':obsales, 'kpbg_sold':kpsales}])
+        assert contr_upd,'Contract Update failes'
+        print contr_upd
+        contr_obj = models.execute_kw(db, uid, password, 'hr.contract', 'search_read', \
+                                      [[['employee_id', '=', empname]]], {'fields': ['id', \
+                                                                                     'name', 'employee_id',
+                                                                                     'crate_sold', 'disp_sold',
+                                                                                     'obbg_sold', 'kpbg_sold']})
+        assert contr_obj, 'Contract_obj read error'
+
+        print "Contract AFTER: ", contr_obj
 
 
-# CONSTANTS
+    except Exception, e:
+        print str(e)
+        raise
+
+
+
 TODAY = datetime.now().strftime('%d-%m-%Y')
 year = str(datetime.now().year)
 month = datetime.now().strftime('%B')
@@ -81,126 +149,70 @@ ERRF = '/tmp/create_pay_err.csv'
 outfile = open(OUTF,'w')
 errfile = open(ERRF,'w')
 print 'ERRFILE is: '+ ERRF+' and OUTF is: '+OUTF
-errfile.write('SN,NAME,SALARY ADV,DAYS ABS')
-outfile.write('SN,NAME,SALARY ADV,DAYS ABS')
+errfile.write('SN,NAME,BAGS,SALARY ADV,DAYS ABS')
+outfile.write('SN,NAME,BAGS,SALARY ADV,DAYS ABS')
 
 sn = esn = 0
-bags = saladv = days_abs= 0
+bags = saladv = 0
 
-def pay():
-    with open(WBFILE, 'rb') as csvfile:
-        line = csv.DictReader(csvfile)
-        for row in line:
-            try:
-                employee = row['NAME'].strip().upper()
-                assert employee,'Staff Name Empty in Source file'
-
+with open(WBFILE, 'rb') as csvfile:
+    line = csv.DictReader(csvfile)
+    for row in line:
+        try:
+            employee = row['NAME'].strip().upper()
+            if not employee:
+                continue
+            if row.has_key('BAGS'):
+            	bags = row['BAGS'].strip()
+            
+            if row.has_key('SALARY ADV'):
                 saladv = row['SALARY ADV'].strip()
-
-                if not saladv:
-                    saladv = 0.0
-
+            else:
+		        saladv = 0.0
+            if row.has_key('DAYS ABS'):
                 days_abs = row['DAYS ABS'].strip()
+            else:
+		        days_abs = 0
+            if row.has_key('DESIGNATION'):
+            	job_title = row['DESIGNATION'].strip().upper()
+            else:
+                job_title = ""
 
-                if not days_abs:
-                    days_abs = 0
+            # contr_obj
+            if row.has_key('KPANSIA SACHET SALES'):
+                kpsales = float(row['KPANSIA SACHET SALES'].strip())
+                sales = 1
+            if row.has_key('OBUNNA SACHET SALES'):
+                obsales = row['OBUNNA SACHET SALES'].strip()
+                sales = 1
 
-                pay_id = pay_staff(employee,days_abs,saladv)
-                assert pay_id,'Staff Pay failed'
-                sn = sn + 1
+            if row.has_key('CRATES SALES'):
+                cratesales = row['CRATES SALES'].strip()
+                sales = 1
+            if row.has_key('DISPENSER SALES'):
+                dispsales = row['DISPENSER SALES'].strip()
+                sales = 1
 
-            except Exception, e:
-                # print 'Pay Creation Error for ' + ',' + employee + ','+str(e)
-                errstr = str(esn) + ',' + employee +  ',' + str(saladv) + ','+str(days_abs)+','+ str(e)
-                errfile.write(errstr + '\n')
-                esn = esn + 1
-                raise
+            if sales:
+                cupd = contract_update(employee,kpsales,obsales,dispsales,cratesales)
+                assert cupd,'contract update not good'
+                sales = 0
+            # Pay staff
+
+            if sales or job_title:
+                pay_id = pay_others(employee,days_abs,saladv)
+                assert pay_id,'Other pay Failed'
+                sales = 0
+            else:
+                pay_id = pay_bagger(employee,bags,saladv)
+                assert pay_id,'Bagger Pay failed'
 
 
-class Bagger(object):
-    def __init__(self):
-        self.x_month = ""
-        self.x_year = ""
-        self.qty_total = 0.0
-        self.days_abs = 0.0
-        self.employee = ""
-        self.sal_adv = 0.0
-        self.company = ""
-        self.payroll_total = 0
-
-    def _pay(self):
-        try:
-           empname = self.employee
-           year = self.x_year
-           month = self.x_month
-           adv = self.sal_adv
-           daysabs = self.days_abs
-           line_total = 2.5 * self.qty_total
-           self.payroll_total = line_total
-           item_obj= models.execute_kw(db, uid, password, 'fido.payroll.item', 'search_read', \
-                                       [[['name', '=','Bagging Commission' ]]], {'fields': ['id']})
-           item_id = item_obj[0]['id']
-           pline = [
-               (0, 0,
-                {
-                    'item_id': item_id,
-                    'item_mult': 2.5,
-                    'item_qty': self.qty_total,
-                    'line_total': line_total,
-
-                })]
-           emp_obj = models.execute_kw(db, uid, password, 'hr.employee', 'search_read', \
-                                       [[['name', '=',empname ]]], {'fields': ['id']})
-           assert emp_obj, 'employee not exist'
-           pay_obj = models.execute_kw(db, uid, password, 'fido.payroll', 'search_read', \
-                                       [[['name', '=', empname], ['x_year', '=', year], ['f_mnth', '=', month]]], \
-                                       {'fields': ['id']})
-           if not pay_obj:
-
-               pay_id = models.execute_kw(db, uid, password, 'fido.payroll', 'create', \
-                                               [{'name': emp_obj[0]['id'], 'x_year': year, 'f_mnth': month, \
-                                                 'start_date': self.start_date, 'end_date': self.end_date,
-                                                 'daysabsent': daysabs,
-                                                 'saladv': adv, 'company': self.company,'payroll_line_ids': pline,\
-                                                 'payroll_total':self.payroll_total}])
-               assert pay_id, 'Pay Creation Fails'
-               print 'Payroll Created for ' + empname
-
-               # Create Payroll Line ids
-
-           else:
-               pay_id = pay_obj[0]['id']
-               print 'Payroll Exists. Not Created'
-
-           # Move Workflow to Compute from Draft
-           compute_id = models.exec_workflow(db, uid, password, 'fido.payroll', 'compute', pay_id)
-           # assert compute_id,'Validation Failed'
-
-           return pay_id
+            sn = sn + 1
 
         except Exception, e:
-            print(str(e))
+            print 'Pay Creation Error for ' + ',' + employee + ','+str(e)
+            errstr = str(esn) + ',' + employee + ',' + str(bags) + ',' + str(saladv) + ','+str(days_abs)+','+ str(e)
+            errfile.write(errstr + '\n')
+            esn = esn + 1
             raise
-
-    def pay_bagger(self):
-        try:
-            # pay bagger from bagger record
-            bagger_obj = models.execute_kw(db, uid, password, 'fido.bagger', 'search_read', \
-                                        [[['x_month', '=', self.x_month],['x_year', '=', self.x_year]]], {'fields': ['id']})
-            assert bagger_obj,'no bagger_obj'
-            for kk in range(0,len(bagger_obj)):
-                self.employee = bagger_obj[kk]['name']
-                self.qty_total = bagger_obj[kk]['qty_total']
-                self.sal_adv = self.days_abs = 0.0
-
-                self.company = 'FIDO WATER KPANSIA'
-                pay_id = self._pay()
-                assert pay_id, 'Staff Pay failed'
-
-        except Exception, e:
-            print(str(e))
-            raise
-b = Bagger()
-b.x_month = 'june'
-b.x_year = '2017'
-b.pay_bagger()

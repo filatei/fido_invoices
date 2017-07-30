@@ -267,6 +267,11 @@ class Daily(object):
                     tellername = row['TELLER NAME'].strip().upper()
                     teller_no = row['TELLER NO'].strip().upper()
                     partner = row['CUSTOMER NAME'].strip().upper()
+                    salesperson = row['SALESPERSON'].strip().upper()
+                    qty = row['QTY'].strip()
+
+                    assert qty,'no qty for invoice'
+                    price_unit = row['RATE'].strip()
                     if not teller_no:
                         if not row['QTY'] and not row['RATE']:
                             continue
@@ -310,13 +315,15 @@ class Daily(object):
                     if ('/' not in str(tdate)) and ('.' not in str(tdate)):
                         ddt = datetime.fromordinal(datetime(1900, 1, 1).toordinal() + int(tdate) - 2)
                         teller_date = ddt.strftime('%Y-%m-%d')
+                    elif ('.' in str(tdate)):
+                        teller_date = (datetime.strptime(tdate, '%d.%m.%Y')).strftime('%Y-%m-%d')
                     else:
                         teller_date = (datetime.strptime(tdate, '%d/%m/%Y')).strftime('%Y-%m-%d')
                     print ('tdate: ' + str(tdate) + ' = ' + str(teller_date))
 
                     assert teller_date, 'Teller Date not good'
                     self.teller_date = teller_date
-                    salesperson = row['SALESPERSON'].strip().upper()
+
                     price_unit = rate = row['RATE']
                     qty = row['QTY']
 
@@ -333,6 +340,7 @@ class Daily(object):
 
                     DATEINVOICE = dt.strftime('%Y-%m-%d')
                     print ('invdate: ' + str(invdate) + ' = ' + str(DATEINVOICE))
+                    print ('tellerdate: ' + str(teller_date) )
                     # Detect Invalid transaction
                     if not row['TELLER NO'] or qty <= 0 or price_unit == 0:
                         print row['TELLER NO'] + ' Invalid Data QTY: ' + qty + 'Rate: ' + price_unit
@@ -429,7 +437,7 @@ class Daily(object):
                                                                     'invoice_line_ids': lines}])
                     assert account_invoice_customer0, 'Invoice Creation Failed'
 
-                    print 'Invoice for Teller ' + str(self.sn) + ': Customer: ' + partner + ' Created Successfully!'
+                    print 'Invoice for Teller ' + str(self.sn+1) + ': Customer: ' + partner + ' Created Successfully!'
                     # val_id = models.exec_workflow(db, uid, password, \
                     #                                  'account.invoice', 'invoice_open', account_invoice_customer0)
                     # assert val_id,'Invoice not validated'
@@ -452,10 +460,10 @@ class Daily(object):
                     raise
 
 try:
-    db = 'FPLDB10'
+    db = 'FPLDB'
     username = 'admin'
-    password = 'N0tAdmin'
-    port = '8071'
+    password = 'N0tadm1n'
+    port = '8070'
     host = 'localhost'
     url = 'http://%s:%s' % (host, port)
     models = xmlrpclib.ServerProxy('%s/xmlrpc/2/object' % (url))
