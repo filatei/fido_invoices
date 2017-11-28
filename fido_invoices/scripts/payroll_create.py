@@ -29,7 +29,7 @@ WBFILE = args['csvfile']
 try:
     db = 'FPLDB'
     username = 'admin'
-    password = 'N0tadm1n'
+    password = 'YesAdmin'
     port = '8070'
     host = 'localhost'
     url = 'http://%s:%s' % (host, port)
@@ -51,7 +51,7 @@ def pay_bagger(empname,bagno,adv):
                                   [[['name', '=', empname]]], {'fields': ['id']})
         assert emp_obj, 'employee not exist'
         item_tot = 2.5 * float(bagno)
-        adv_tot = -1.0 * float(adv)
+        adv_tot = -1.0 * adv
         line_ids = [(0,0,{
             'item_id':'Bagging Commission',
             'item_qty':bagno,
@@ -86,31 +86,29 @@ def pay_others(empname,daysabs,adv):
         assert emp_obj, 'employee not exist'
         pay_obj =  models.execute_kw(db, uid, password, 'fido.payroll', 'search_read', \
                                   [[['name', '=', empname],['x_year','=',year],['f_mnth','=',month]]], {'fields': ['id']})
-
-	if not pay_obj:
+        if not pay_obj:
 
             pay_id = models.execute_kw(db, uid, password, 'fido.payroll', 'create', \
                                [{'name': emp_obj[0]['id'],'x_year':year,'daysabsent':daysabs,'saladv':adv\
                                 }])
             print 'Payroll (other) Created for ' + empname
             compute_id = models.exec_workflow(db, uid, password, 'fido.payroll', 'compute', pay_id)
-	else:
-	    pay_id = pay_obj[0]['id'] 
+        else:
+            pay_id = pay_obj[0]['id'] 
             print 'Payroll Obj exists'
         return pay_id
     except Exception, e:
         print 'Pay_Other Error for ' + ',' + employee + ',' + str(e)
         raise
 
-def contract_update(empname,kpsales,obsales,dispsales,cratesales):
+def contract_update(empname,kpsales,obsales,ygsales,dispsales,cratesales):
     """ Update the Employee contract with live sales data"""
 
     try:
         contr_obj = models.execute_kw(db, uid, password, 'hr.contract', 'search_read', \
                                   [[['employee_id.name', '=', empname]]], {'fields': ['id', \
-                                                                                     'name', 'employee_id',
-                                                                                     'crate_sold', 'disp_sold',
-                                                                                     'obbg_sold', 'kpbg_sold']})
+                                   'name', 'employee_id','crate_sold', 'disp_sold',
+                                       'obbg_sold', 'kpbg_sold','ygbg_sold']})
         assert contr_obj,'Contract_obj read error'
 
         if len(contr_obj) > 1:
@@ -122,24 +120,21 @@ def contract_update(empname,kpsales,obsales,dispsales,cratesales):
 
         contr_upd = models.execute_kw(db, uid, password, 'hr.contract', 'write',\
                     [[contr_id], {'crate_sold': cratesales,'disp_sold':dispsales,\
-                    'obbg_sold':obsales, 'kpbg_sold':kpsales}])
+                    'obbg_sold':obsales, 'kpbg_sold':kpsales,'ygbg_sold':ygsales}])
         assert contr_upd,'Contract Update failes'
         print contr_upd
         contr_obj = models.execute_kw(db, uid, password, 'hr.contract', 'search_read', \
                                       [[['employee_id', '=', empname]]], {'fields': ['id', \
-                                                                                     'name', 'employee_id',
-                                                                                     'crate_sold', 'disp_sold',
-                                                                                     'obbg_sold', 'kpbg_sold']})
+                                      'name', 'employee_id',
+                                      'crate_sold', 'disp_sold','obbg_sold', 'kpbg_sold','ygbg_sold']})
         assert contr_obj, 'Contract_obj read error'
 
         print "Contract AFTER: ", contr_obj
-
+        return contr_obj
 
     except Exception, e:
         print str(e)
         raise
-
-
 
 TODAY = datetime.now().strftime('%d-%m-%Y')
 year = str(datetime.now().year)
@@ -153,7 +148,7 @@ errfile.write('SN,NAME,BAGS,SALARY ADV,DAYS ABS')
 outfile.write('SN,NAME,BAGS,SALARY ADV,DAYS ABS')
 
 sn = esn = 0
-bags = saladv = 0
+bags = saladv = sales = 0
 
 with open(WBFILE, 'rb') as csvfile:
     line = csv.DictReader(csvfile)
@@ -163,27 +158,30 @@ with open(WBFILE, 'rb') as csvfile:
             if not employee:
                 continue
             if row.has_key('BAGS'):
-            	bags = row['BAGS'].strip()
-            
+                bags = row['BAGS'].strip()
             if row.has_key('SALARY ADV'):
-                saladv = row['SALARY ADV'].strip()
+                saladv = row['SALARY ADV']
             else:
-		        saladv = 0.0
+                saladv = 0.0
             if row.has_key('DAYS ABS'):
-                days_abs = row['DAYS ABS'].strip()
+                days_abs = row['DAYS ABS']
             else:
-		        days_abs = 0
+                days_abs = 0
             if row.has_key('DESIGNATION'):
-            	job_title = row['DESIGNATION'].strip().upper()
+                job_title = row['DESIGNATION'].strip().upper()
             else:
                 job_title = ""
 
             # contr_obj
             if row.has_key('KPANSIA SACHET SALES'):
-                kpsales = float(row['KPANSIA SACHET SALES'].strip())
+                kpsales = row['KPANSIA SACHET SALES']
                 sales = 1
             if row.has_key('OBUNNA SACHET SALES'):
                 obsales = row['OBUNNA SACHET SALES'].strip()
+                sales = 1
+
+            if row.has_key('YENEGWE SACHET SALES'):
+                ygsales = row['YENEGWE SACHET SALES'].strip()
                 sales = 1
 
             if row.has_key('CRATES SALES'):
@@ -194,7 +192,7 @@ with open(WBFILE, 'rb') as csvfile:
                 sales = 1
 
             if sales:
-                cupd = contract_update(employee,kpsales,obsales,dispsales,cratesales)
+                cupd = contract_update(employee,kpsales,obsales,ygsales,dispsales,cratesales)
                 assert cupd,'contract update not good'
                 sales = 0
             # Pay staff
@@ -204,6 +202,7 @@ with open(WBFILE, 'rb') as csvfile:
                 assert pay_id,'Other pay Failed'
                 sales = 0
             else:
+                bags = 0
                 pay_id = pay_bagger(employee,bags,saladv)
                 assert pay_id,'Bagger Pay failed'
 
@@ -212,7 +211,7 @@ with open(WBFILE, 'rb') as csvfile:
 
         except Exception, e:
             print 'Pay Creation Error for ' + ',' + employee + ','+str(e)
-            errstr = str(esn) + ',' + employee + ',' + str(bags) + ',' + str(saladv) + ','+str(days_abs)+','+ str(e)
+            errstr = str(esn) + ',' + employee + ',' + str(bags) + ',' + str(saladv) + ','+ str(e)
             errfile.write(errstr + '\n')
             esn = esn + 1
             raise
